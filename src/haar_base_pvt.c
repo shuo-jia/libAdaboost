@@ -2,19 +2,72 @@
 #include <stdlib.h>
 #include "haar_base_pvt.h"
 
+/**
+ * \file haar_base_pvt.c
+ * \brief haar_base 的私有部分，包括函数实现
+ * \author Shuojia
+ * \version 1.0
+ * \date 2024-07-14
+ */
+
+/*******************************************************************************
+ * 				    类型定义
+ ******************************************************************************/
+/// 回调函数类型：此类函数将样本集在指定弱学习器上的输出保存到数组中
+typedef void (*output_fn)(flt_t *, num_t, const void *, const struct sp_wrap *);
+
 /*******************************************************************************
  * 				  静态函数声明
  ******************************************************************************/
-// struct ada_handles 的回调函数，对弱学习器进行训练
+/// struct ada_handles 的回调函数，对弱学习器进行训练
 static bool wl_train(void *weaklearner, num_t m, const void *sample,
 		     const void *label, const flt_t D[]);
 
-// 用于 qsort 比较（struct sort_item * 指针比较）
+/// 用于 qsort 比较（struct sort_item * 指针比较）
 static int sort_cmp(const void *item1, const void *item2);
+
+/// 将样本集在弱学习器 wl 上的输出保存到 vals 数组中（输出值不带置信度）
+static void wl_output(flt_t vals[], num_t vals_len, const void *wl,
+		      const struct sp_wrap *sp);
+
+/// 将样本集在弱学习器 wl 上的输出保存到 vals 数组中（输出值带置信度）
+static void wl_output_cf(flt_t vals[], num_t vals_len, const void *wl,
+			 const struct sp_wrap *sp);
+
+/// 将 h(X[i]) * alpha 的值保存到 vals 数组中，wl 为 struct haar_wl * 类型
+static void wl_alpha(flt_t vals[], num_t vals_len, const void *wl,
+			 const struct sp_wrap *sp);
+
+/// get_vals() 函数框架，使用回调函数 op() 改变行为；op 可为 wl_output 或 wl_output_cf
+static enum ada_result get_vals_framework(flt_t vals[], num_t vals_len,
+					  const void *weaklearner, num_t m,
+					  const void *sample, const void *label,
+					  const flt_t D[], output_fn op);
+
+/// all_pass 函数框架，使用回调函数 op() 改变行为；op 可为 wl_alpha 或 wl_output_cf
+static bool all_pass_framework (struct train_setting *st, output_fn op);
 
 /*******************************************************************************
  * 				    函数定义
  ******************************************************************************/
+enum ada_result haar_get_vals(flt_t vals[], num_t vals_len,
+			      const void *weaklearner, num_t m,
+			      const void *sample, const void *label,
+			      const flt_t D[])
+{
+	return get_vals_framework(vals, vals_len, weaklearner, m, sample, label,
+				  D, wl_output);
+}
+
+enum ada_result haar_get_vals_cf(flt_t vals[], num_t vals_len,
+			      const void *weaklearner, num_t m,
+			      const void *sample, const void *label,
+			      const flt_t D[])
+{
+	return get_vals_framework(vals, vals_len, weaklearner, m, sample, label,
+				  D, wl_output_cf);
+}
+
 void ada_hl_init(struct ada_handles *ada_hl, num_t l, num_t m,
 		 ada_vals_fn get_vals, ada_alpha_fn get_alpha, ada_next_fn next,
 		 ada_init_D_fn init_D, ada_update_D_fn update_D)
@@ -150,6 +203,16 @@ void get_ratio(flt_t * d, flt_t * f, struct ada_wrap *ada, const flt_t vals[])
 		*f = 0;
 }
 
+bool haar_all_pass (struct train_setting *st)
+{
+	return all_pass_framework(st, wl_alpha);
+}
+
+bool haar_all_pass_cf (struct train_setting *st)
+{
+	return all_pass_framework(st, wl_output_cf);
+}
+
 /*******************************************************************************
  * 				  静态函数定义
  ******************************************************************************/
@@ -171,4 +234,72 @@ int sort_cmp(const void *item1, const void *item2)
 		return 1;
 	else
 		return 0;
+}
+
+void wl_output(flt_t vals[], num_t vals_len, const void *wl,
+	       const struct sp_wrap *sp)
+{
+	for (num_t i = 0; i < vals_len; ++i)
+		vals[i] =
+		    sp->handles->hypothesis.haar(weaklearner, sp->h, sp->w,
+						 sp->w, (void *)sp->X[i],
+						 (void *)sp->X2[i], 1);
+}
+
+void wl_output_cf(flt_t vals[], num_t vals_len, const void *wl,
+		  const struct sp_wrap *sp)
+{
+	for (num_t i = 0; i < vals_len; ++i)
+		vals[i] =
+		    sp->handles->hypothesis.haar_cf(weaklearner, sp->h, sp->w,
+						    sp->w, (void *)sp->X[i],
+						    (void *)sp->X2[i], 1);
+}
+
+void wl_alpha(flt_t vals[], num_t vals_len, const void *weaklearner,
+	      const struct sp_wrap *sp)
+{
+	const struct haar_wl *wl = weaklearner;
+	for (num_t i = 0; i < vals_len; ++i)
+		vals[i] =
+		    sp->handles->hypothesis.haar(wl->weaklearner, sp->h, sp->w,
+						 sp->w, (void *)sp->X[i],
+						 (void *)sp->X2[i],
+						 1) * wl->alpha;
+}
+
+enum ada_result get_vals_framework(flt_t vals[], num_t vals_len,
+				   const void *weaklearner, num_t m,
+				   const void *sample, const void *label,
+				   const flt_t D[], output_fn op)
+{
+	num_t i;
+	const struct sp_wrap *sp = sample;
+	const label_t *Y = label;
+	op(vals, vals_len, weaklearner, sp);	// 计算 h(X[i])
+
+	flt_t err = 0;
+	for (i = sp->l; i < vals_len; ++i) {	// 在训练集计算 h(X[i]) * Y[i]
+		vals[i] *= Y[i - sp->l];
+		if (vals[i] <= 0)
+			err += D[i - sp->l];
+	}
+
+	if (err == 0)
+		return ADA_ALL_PASS;
+	else if (err < 0.5)
+		return ADA_SUCCESS;
+	else
+		return ADA_FAILURE;
+}
+
+bool all_pass_framework (struct train_setting *st, output_fn op)
+{
+	flt_t * vals = malloc (sizeof(flt_t) * st->ada.l);
+	if (vals == NULL)
+		return false;
+	op(vals, st->ada.l, st->ada.adaboost->wl.end_ptr->data, &st->sp);
+	get_ratio (&(st->ada.d), &(st->ada.f), &st->ada, vals);         
+	free (vals);
+	return true;
 }

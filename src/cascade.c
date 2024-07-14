@@ -1,30 +1,39 @@
-/* cascade.c --- 级联的(Cascade) adaboost 分类器 */
 #include <sys/param.h>
 #include <string.h>
 #include <stdlib.h>
 #include <float.h>
 #include "cascade.h"
-#include "matlab_lib.h"
+/**
+ * \file cascade.c
+ * \brief 级联的(Cascade) adaboost 分类器函数定义
+ * \author Shuojia
+ * \version 1.0
+ * \date 2024-07-15
+ */
 
 /*******************************************************************************
  * 				  静态函数声明
  ******************************************************************************/
-// 包装函数，将参数改为 void * 类型
+/// Adaboost 写入方法的包装函数，用作链表的回调函数
 static bool ada_write(const void *adaboost, va_list ap, FILE * file);
+/// Adaboost 读取方法的包装函数，用作链表的回调函数
 static void *ada_read(va_list ap, FILE * file);
+/// Adaboost 内存释放方法的包装函数，用作链表的回调函数
 static void ada_free(void *adaboost, va_list ap);
 
-// 根据训练结果更新调整训练集和验证集
+/// 根据训练结果更新调整训练集和验证集。
+/** 在验证集中留下判别为阳性的样本；在训练集留下阳性样本及假阳性样本，并随机生
+ * 成足量的样本 */
 static void update_samples(num_t * l, num_t * m, imgsz_t n,
 			   const sample_t * X[], const sample_t * X2[],
 			   label_t Y[], const struct haar_adaboost *adaboost,
 			   const struct haar_ada_handles *hl);
 
-// 使用极大值抑制方法处理重叠边框
+/// 使用极大值抑制方法处理重叠边框
 static void NMS(struct link_list *list, flt_t threshold);
 
-// 返回一个一维数组，元素为 0, 1, ..., m-1 的随机排列；失败则返回 NULL
-// 返回的数组可用 free() 函数释放内存
+/// 返回一个一维数组，元素为 0, 1, ..., m-1 的随机排列；失败则返回 NULL
+/** 返回的数组可用 free() 函数释放内存 */
 static num_t *randperm(num_t m);
 
 /*******************************************************************************

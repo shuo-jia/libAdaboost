@@ -12,7 +12,7 @@
  ******************************************************************************/
 /**
  * \brief 弱学习器数组读写函数
- * \param[in, out] weaklearner 弱学习器数组地址
+ * \param[in, out] wl          弱学习器数组地址
  * \param[in] nmemb            元素数量
  * \param[in, out] file        FILE* 类型
  * \param[in] hl               struct wl_handles *类型

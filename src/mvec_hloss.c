@@ -5,25 +5,38 @@
 #include "mvec_hloss.h"
 #include "AlphaCalc/alpha.h"
 
+/**
+ * \file mvec_hloss.c
+ * \brief mvec_adaboost 训练方法实现：使用汉明损失（Hamming loss）进行训练
+ * \author Shuojia
+ * \version 1.0
+ * \date 2024-07-14
+ */
 /*******************************************************************************
  * 				    类型定义
  ******************************************************************************/
-// 标签集的结构体包装
+/// 标签集的结构体包装
 struct label_wrap {
-	label_t *labels;	// 标签集（label_t 数组，长度为 dim * m，
-				//         m 为样本数量）
-	mlabel_t dim;		// 不同标签的数量
+	label_t *labels;	///< 标签集（label_t 数组，长度为 dim * m，
+				/**<         m 为样本数量）*/
+	mlabel_t dim;		///< 不同标签的数量
 };
 
 /*******************************************************************************
  * 				   宏函数定义
  ******************************************************************************/
-// 计算中间值 vals[j][i] = h(X[i])[l] * Y[i][l]
-// vals: 保存中间值的数组
-// wl: 弱学习器数组地址；      wl_size: 弱学习器长度（字节）
-// m: 样本数量；           n: 样本维度；
-// X: 样本集；                      Y: 标签集；         dim: 标签集维度；
-// h_fun: 假设函数的名称
+/**
+ * \brief 计算中间值 vals[j][i] = h(X[i])[l] * Y[i][l]
+ * \param[out] vals   保存中间值的数组
+ * \param[in] wl      弱学习器数组地址
+ * \param[in] wl_size 弱学习器长度（字节）
+ * \param[in] m       样本数量
+ * \param[in] n       样本维度
+ * \param[in] X       样本集
+ * \param[in] Y       标签集
+ * \param[in] dim     标签集维度；
+ * \param[in] h_fun   假设函数的名称
+ */
 #define VALS_CALC(vals, wl, wl_size, m, n, X, Y, dim, h_fun)			\
 do {										\
 	const unsigned char *wl_ptr = wl;					\
@@ -36,9 +49,15 @@ do {										\
 	}									\
 } while(0)
 
-// 假设器计算函数模板
-// ada, ..., hl: 与 mvec_ada_h_xxx() 函数参数意义相同
-// output_fun: OUTPUT_XXX() 系列宏函数名
+/**
+ * \brief 假设器计算函数模板
+ * \param[in] ada        指向已保存训练结果的 struct mvec_adaboost 结构体
+ * \param[in] x          样本向量
+ * \param[in] n          样本向量的长度
+ * \param[in] hl         弱学习器回调函数集合
+ * \param[in] output_fun 以 OUTPUT_ 为前缀的宏函数名
+ * \return 输出值最大的 Adaboost 分类器索引
+ */
 #define H_CALC(ada, x, n, hl, output_fun)					\
 ({										\
 	flt_t output [ada->dim];						\
@@ -54,12 +73,23 @@ do {										\
 	argmax (output, ada->dim);						\
 })
 
-// 输出值计算方法
-// wl 为当前弱学习器地址，alpha 为系数数组地址，i 为 alpha 对应元素索引，
-// x 为样本数组，n 为样本维度，hl 为弱学习器的回调函数集
+/**
+ * \brief 当前弱学习器输出值计算（使用弱学习器系数）
+ * \param[in] wl      当前弱学习器地址
+ * \param[in] alpha   系数数组地址
+ * \param[in] i alpha 对应元素索引
+ * \param[in] x       样本数组
+ * \param[in] n       样本维度
+ * \param[in] hl      弱学习器的回调函数集
+ * \return 返回当前弱学习器的输出值
+ */
 #define OUTPUT(wl, alpha, i, x, n, hl)						\
 	((alpha)[i] * (hl)->hypothesis.vec(wl, x, n))
 
+/**
+ * \brief 当前弱学习器输出值计算（不使用弱学习器系数）
+ * \details \copydetails OUTPUT
+ */
 #define OUTPUT_FOLD(wl, alpha, i, x, n, hl)					\
 	((hl)->hypothesis.vec_cf(wl, x, n))
 
@@ -71,73 +101,76 @@ do {										\
  * sample: 实际类型为 struct sp_wrap *
  * adaboost: 实际类型为 struct ada_wrap *
  */
-// 弱学习器训练函数
+/// 弱学习器训练函数
 static bool wl_train(void *weaklearner, num_t m, const void *sample,
 		     const void *label, const flt_t D[]);
-// 获取下一弱学习器
+/// 获取下一弱学习器
 static bool wl_next(struct ada_item *item, void *adaboost,
 		    const flt_t vals[], num_t vals_len);
-// 获取弱学习器输出
+/// 获取弱学习器输出
 static enum ada_result get_vals(flt_t vals[], num_t vals_len,
 				const void *weaklearner, num_t m,
 				const void *sample, const void *label,
 				const flt_t D[]);
-// alpha 计算方法（使用近似方法），包装函数
+/// alpha 计算方法（使用近似方法），包装函数
 static flt_t alpha_approx_wrap(const flt_t vals[], num_t vals_len, num_t m,
 			       const void *label, const flt_t D[]);
-// alpha 计算方法（使用牛顿迭代），包装函数
+/// alpha 计算方法（使用牛顿迭代），包装函数
 static flt_t alpha_newton_wrap(const flt_t vals[], num_t vals_len, num_t m,
 			       const void *label, const flt_t D[]);
-// 权重初始化方法
+/// 权重初始化方法
 static void init_D(flt_t D[], num_t m, const void *label);
-// 权重更新方法
+/// 权重更新方法
 static void update_D(flt_t D[], flt_t vals[], num_t vals_len, num_t m,
 		     const void *label, flt_t alpha);
 
-// 当全部样本分类成功时将被调用，参数 ada 内将保存已训练的轮数
-// 弱学习器系数不并入弱学习器
+/// 当全部样本分类成功时将被调用，参数 ada 将保存已训练的轮数
+/** （弱学习器系数不并入弱学习器）*/
 static bool all_pass(struct ada_wrap *ada, const struct wl_handles *hl);
-// 弱学习器系数并入弱学习器，无需复制弱学习器系数
+/// 当全部样本分类成功时将被调用，参数 ada 将保存已训练的轮数
+/** （弱学习器系数并入弱学习器，不复制弱学习器系数）*/
 static bool all_pass_fold(struct ada_wrap *ada, const struct wl_handles *hl);
 
-/*
- * 初始化标签集包装结构体，为标签集编码
- * lb: 要进行初始化的结构体
- * label: 样本集的标签
- * m: 样本数量（即 label 数组的元素个数）
+/**
+ * \brief 初始化标签集包装结构体，为标签集编码
+ * \param[out] lb   要进行初始化的结构体
+ * \param[in] label 样本集的标签
+ * \param[in] m     样本数量（即 label 数组的元素个数）
+ * \return 成功则返回真，否则返回假
  */
 static bool init_label_wrap(struct label_wrap *lb, const mlabel_t * label,
 			    num_t m);
 
-/*
- * 释放 struct label_wrap 结构体内部空间
- * lb: 已初始化的结构体
+/**
+ * \brief 释放 struct label_wrap 结构体内部空间
+ * \param[in] lb 已初始化的结构体
  */
 static inline void free_label_wrap(struct label_wrap *lb);
 
-/*
- * 为采用 hloss 的 Adaboost 设置回调函数集
- * handles: Adaboost 训练所需回调函数集合
- * m: 样本数量
- * dim: 不同标签的数量
- * get_alpha: 计算 alpha 的值（回调函数）
+/**
+ * \brief 为采用 hloss 的 Adaboost 设置回调函数集
+ * \param[out] handles  Adaboost 训练所需回调函数集合
+ * \param[in] m         样本数量
+ * \param[in] dim       不同标签的数量
+ * \param[in] get_alpha 计算 alpha 的值（回调函数）
  */
 static inline void ada_hl_init(struct ada_handles *handles, num_t m,
 			       mlabel_t dim, ada_alpha_fn get_alpha);
 
-/*
- * 输出数组最大值的索引
- * output: 待检查最大值的数组
- * n: 数组元素个数
- * 返回值：返回最大元素的索引
+/**
+ * \brief 输出数组最大值的索引
+ * \param[in] output 待检查最大值的数组
+ * \param[in] n      数组元素个数
+ * \return 返回最大元素的索引
  */
 static mlabel_t argmax(flt_t output[], mlabel_t n);
 
-// 训练模板
-// adaboost, ..., handles: 与 mvec_ada_xxx_train() 系列函数参数意义相同
-// get_alpha: 弱学习器系数计算函数（回调函数）
-// all_pass: 样本全部分类成功时调用的回调函数（all_pass_fn 类型）
-// 返回值：成功返回真，否则返回假
+/**
+ * \brief 训练模板
+ * \param[in] get_alpha 弱学习器系数计算函数（回调函数）
+ * \param[in] all_pass  样本全部分类成功时调用的回调函数（all_pass_fn 类型）
+ * \details \copydetails mvec_ada_train_fn
+ */
 static inline bool train_framework(struct mvec_adaboost *adaboost, turn_t T,
 				   num_t m, dim_t n, const sample_t X[m][n],
 				   const mlabel_t Y[], bool cache_on,

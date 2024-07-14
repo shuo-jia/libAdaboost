@@ -42,7 +42,7 @@ struct dstump_segment {
  * \param[out] seg     用于保存最优划分值
  * \param[in]  feature 当前特征
  * \param[in]  m       样本数量
- * \param[in]  sample  样本集
+ * \param[in]  samples 样本集
  * \param[in] label    样本集标签
  * \param[in]  D       样本集的概率分布
  * \param[in]  handles 操作当前决策树桩的回调函数

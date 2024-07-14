@@ -2,11 +2,17 @@
 #include <stdlib.h>
 #include "vec_base_pvt.h"
 #include "mvec_adaboost.h"
+/**
+ * \file mvec_adaboost.c
+ * \brief Adaboost 分类器函数实现：多分类任务、样本集为向量集
+ * \author Shuojia
+ * \version 1.0
+ * \date 2024-07-14
+ */
 
 /*******************************************************************************
  * 				    函数定义
  ******************************************************************************/
-
 bool mvec_ada_init(struct mvec_adaboost *ada, turn_t group_len, mlabel_t dim,
 		   bool using_fold, const struct wl_handles *handles)
 {

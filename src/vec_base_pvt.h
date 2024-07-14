@@ -105,7 +105,7 @@ turn_t vec_wl_write(const unsigned char *weaklearner, turn_t nmemb,
  * \return 返回成功复制的弱学习器数量
  */
 turn_t vec_wl_copy(unsigned char *dst, const unsigned char *src,
-		   turn_t nmemb, const struct wl_handles *handles);
+		   turn_t nmemb, const struct wl_handles *hl);
 
 /**
  * \brief 弱学习器数组释放函数

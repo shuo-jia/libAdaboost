@@ -2,36 +2,45 @@
 #include "mvec_hloss.h"
 #include "haar_adaboost.h"
 #include "haar_asym_ada.h"
+/**
+ * \file adaboost.c
+ * \brief Adaboost 分类器函数调用集初始化函数，函数实现
+ * 	此文件定义了与 Adaboost 相关的一组回调函数集合，使用类似工厂模式的方法设
+ * 	置不同种类的回调函数集。此文件为不同 Adaboost 分类器提供了一组通用的接口。
+ * \author Shuojia
+ * \version dd
+ * \date 2024-07-14
+ */
 
 /*******************************************************************************
  * 				    类型定义
  ******************************************************************************/
-// 回调函数类型：弱学习器回调函数集初始化
+/// 回调函数类型：弱学习器回调函数集初始化
 typedef void (*wl_setting_fn)(struct wl_handles * handles);
 
 /*******************************************************************************
  * 				    静态变量
  ******************************************************************************/
-// 决策树桩回调函数集初始化方法
+/// 决策树桩回调函数集初始化方法
 static wl_setting_fn wl_set_vec_arr[ADA_WL_END][2] = {
 	[ADA_CONTINUOUS] = { wl_set_vec_cstump, wl_set_vec_cstump_cf },
 	[ADA_DISCRETE] = { wl_set_vec_dstump, wl_set_vec_dstump_cf },
 };
 
-// struct vec_adaboost 的训练方法
+/// struct vec_adaboost 的训练方法
 static vec_ada_train_fn vec_ada_train_arr[ADA_ALPHA_END] = {
 	[ADA_APPROX] = vec_ada_approx_train,
 	[ADA_FOLD] = vec_ada_fold_train,
 	[ADA_NEWTON] = vec_ada_newton_train,
 };
 
-// struct vec_adaboost 的假设器
+/// struct vec_adaboost 的假设器
 static void *vec_ada_h_arr[ADA_H_END][2] = {
 	[ADA_NO_CONFIDENT] = { vec_ada_h, vec_ada_fold_h },
 	[ADA_CONFIDENT] = { vec_ada_cf_h, vec_ada_fold_cf_h },
 };
 
-// struct mvec_adaboost 的训练方法
+/// struct mvec_adaboost 的训练方法
 static mvec_ada_train_fn mvec_ada_train_arr[ADA_MVEC_END][ADA_ALPHA_END] = {
 	[ADA_HLOSS] = {
 		       [ADA_APPROX] = mvec_ada_approx_train,
@@ -40,7 +49,7 @@ static mvec_ada_train_fn mvec_ada_train_arr[ADA_MVEC_END][ADA_ALPHA_END] = {
 		        },
 };
 
-// struct haar_adaboost 的训练方法
+/// struct haar_adaboost 的训练方法
 static haar_ada_train_fn haar_ada_train_arr[ADA_HAAR_END] = {
 	[ADA_NM_APPROX] = haar_ada_approx_train,
 	[ADA_NM_NEWTON] = haar_ada_newton_train,

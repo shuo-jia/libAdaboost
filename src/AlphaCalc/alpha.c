@@ -2,22 +2,31 @@
 #include <float.h>
 #include <stdbool.h>
 #include "alpha.h"
+/**
+ * \file alpha.c
+ * \brief 函数定义，给出一组弱学习器系数的计算方法
+ * \author Shuojia
+ * \version 1.0
+ * \date 2024-07-15
+ */
 
 /*******************************************************************************
  * 				   宏常量定义
  ******************************************************************************/
-// 落于闭区间 [-ZERO_REGION, ZERO_REGION] 的实数被认为是 0
+/// “零值”范围定义，落于闭区间 [-ZERO_REGION, ZERO_REGION] 的实数被认为是 0
 #define ZERO_REGION 1E-6
 
 /*******************************************************************************
  * 				  静态函数声明
  ******************************************************************************/
-/*
- * 用于牛顿二分法的导函数计算
- * r_arr: r[i] = D[i] * vals[i], i = 1, 2, ..., m
- * vals: 数组，保存有 label[i] * h(sample[i]) 的值，i = 1, 2, ..., m
- * m: 样本数量
- * alpha: 当前的弱学习器系数取值
+/**
+ * \brief 用于牛顿二分法的导函数计算
+ * \param[in] r_arr r[i] = D[i] * vals[i], i = 1, 2, ..., m
+ * \param[in] vals  数组，保存有 label[i] * h(sample[i]) 的值，i = 1, 2, ..., m
+ * \param[in] m     样本数量
+ * \param[in] alpha 当前的弱学习器系数取值
+ * \return 返回导数值：
+ *      Z'(alpha) = - sum_{i=1}^m D(X_i) y_i h(X_i) e^{-alpha y_i h(X_i)}
  */
 static flt_t derived_fun(const flt_t r_arr[], const flt_t vals[],
 			 num_t m, flt_t alpha);

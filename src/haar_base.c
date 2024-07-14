@@ -2,18 +2,27 @@
 #include <string.h>
 #include "haar_base.h"
 #include "link_list.h"
+/**
+ * \file haar_base.c
+ * \brief 基于哈尔特征的 Adaboost 分类器--函数实现
+ * \author Shuojia
+ * \version 1.0
+ * \date 2024-07-14
+ */
 
 /*******************************************************************************
  * 				   宏函数定义
  ******************************************************************************/
-// 向文件写入或从文件读取 Adaboost
-// ada: 读取时，是未初始化的 Adaboost；写入时，需已初始化
-// file: 已打开的文件
-// hl: 弱学习器回调函数集合，const struct wl_handles * 类型
-// frw_fun: fread 或 fwrite
-// wl_rw: wl_read 或 wl_write
-// link_rw_fun: link_list_read 或 link_list_write
-// 返回值：成功返回真；否则返回假
+/**
+ * \brief 向文件写入或从文件读取 Adaboost
+ * \param[in, out] ada    读取时，是未初始化的 Adaboost；写入时，需已初始化
+ * \param[in, out] file   已打开的文件
+ * \param[in] hl          弱学习器回调函数集合，const struct wl_handles * 类型
+ * \param[in] frw_fun     fread 或 fwrite
+ * \param[in] wl_rw       wl_read 或 wl_write
+ * \param[in] link_rw_fun link_list_read 或 link_list_write
+ * \return 成功返回真；否则返回假
+ */
 #define HAAR_RW(ada, file, hl, frw_fun, wl_rw, link_rw_fun)			\
 ({										\
 	bool finished = false;							\
@@ -30,37 +39,49 @@
 	finished;								\
 })
 
-// 获取 struct haar_wl 结构体成员的地址
-// data: struct haar_wl * 类型
-// memb: struct haar_wl 的任一成员的名称
+/**
+ * \brief 获取 struct haar_wl 结构体成员的地址
+ * \param[in] data: void * 类型，实际上为 struct haar_wl * 类型
+ * \param[in] memb: struct haar_wl 的任一成员的名称
+ * \return 返回成员地址
+ */
 #define HAAR_PTR(data, memb) (&((struct haar_wl *)data)->memb)
 
 /*******************************************************************************
  * 				  静态函数声明
  ******************************************************************************/
-// 从文件读取弱学习器
-// ap: 可变参数列表，包含 int 参数（0或1，1 表示不使用弱学习器系数）以及
-//      const struct wl_handles *（弱学习器回调函数）
-// file: 保存弱学习器参数的文件
-// 返回值：成功则返回新创建的弱学习器地址，如使用弱学习器参数，则类型为
-//      struct haar_wl *，其内包含弱学习器系数；否则仅返回弱学习器地址
+/**
+ * \brief 从文件读取弱学习器
+ * \param[in, out] ap: 可变参数列表，包含 int 参数（0或1，1 表示不使用弱学习器
+ *      系数）以及 const struct wl_handles *（弱学习器回调函数）
+ * \param[in] file:    保存弱学习器参数的文件
+ * \return 成功则返回新创建的弱学习器地址，如使用弱学习器参数，则类型为
+ *      struct haar_wl *，其内包含弱学习器系数；否则仅返回弱学习器地址
+ */
 void *wl_read(va_list ap, FILE * file);
 
-// 向文件写入弱学习器参数
-// data: 弱学习器地址
-// ap, file: 同 wl_read
-// 返回值：成功返回真，否则返回假
+/**
+ * \brief 向文件写入弱学习器参数
+ * \param[in] data      弱学习器地址
+ * \param[out] ap, file 同 wl_read
+ * \return 成功返回真，否则返回假
+ */
 bool wl_write(const void *data, va_list ap, FILE * file);
 
-// 复制弱学习器
-// data: 弱学习器地址
-// ap: 同 wl_read
-// 返回值：成功则返回弱学习器 data 的一份拷贝，否则返回 NULL
+/**
+ * \brief 复制弱学习器
+ * \param[out] data 弱学习器地址
+ * \param[in] ap    同 wl_read
+ * \return 成功则返回弱学习器 data 的一份拷贝，否则返回 NULL
+ */
 void *wl_copy(const void *data, va_list ap);
 
-// 释放弱学习器内部使用的内存，但不包括 data 本身
-// data: 弱学习器地址
-// ap: 可变参数列表，包含 const struct wl_handles * hl 指针，hl->copy() 非空
+/**
+ * \brief 释放弱学习器内部使用的内存，但不包括 data 本身
+ * \param[in] data: 弱学习器地址
+ * \param[in] ap: 可变参数列表，包含 const struct wl_handles * hl 指针，
+ *      hl->copy() 非空
+ */
 void wl_free(void *data, va_list ap);
 
 /*******************************************************************************

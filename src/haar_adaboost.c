@@ -2,46 +2,31 @@
 #include <stdlib.h>
 #include "haar_base_pvt.h"
 #include "AlphaCalc/alpha.h"
-
-/*******************************************************************************
- * 				   宏函数定义
- ******************************************************************************/
-// op_val: （宏）函数名，接收 st、样本索引 i 作为参数，返回 h(X[i]) * alpha 的值
-#define OP_VAL(st, i)								\
-({										\
-	const struct haar_wl * wl = st->ada.adaboost->wl.end_ptr->data;		\
-	st->sp.handles->hypothesis.haar((wl)->weaklearner, (st)->sp.h,		\
-			(st)->sp.w, (st)->sp.w, (void *)(st)->sp.X[i],		\
-			(void *)(st)->sp.X2[i], 1) * wl->alpha;			\
- })
+/**
+ * \file haar_adaboost.c
+ * \brief 基于哈尔特征的 Adaboost 分类器函数定义--子类（增加训练方法）。
+ *	主要实现 Paul Viola, Michael Jones 于 2001 年给出的方法
+ *	（Robust Real-time Object Detection）
+ * \author Shuojia
+ * \version 1.0
+ * \date 2024-07-14
+ */
 
 /*******************************************************************************
  * 				  静态函数声明
  ******************************************************************************/
-// struct ada_handles 的回调函数
-// 对于验证集（前 l 个元素），计算弱学习器输出值 h(X[i])
-// 对于训练集（后 m 各元素），计算 h(X[i]) * Y[i]
-static enum ada_result get_vals(flt_t vals[], num_t vals_len,
-				const void *weaklearner, num_t m,
-				const void *sample, const void *label,
-				const flt_t D[]);
-
-// struct ada_handles 的回调函数，初始化概率分布（正例样本总概率=负例样本总概率）
+/// struct ada_handles 的回调函数，初始化概率分布（正例样本总概率=负例样本总概率）
 static void init_D(flt_t D[], num_t m, const void *label);
 
-// struct ada_handles 的回调函数，使用常规方法更新概率分布，
-// 对于验证集（前 l 个元素），计算 alpha * h(X[i])
-// 对于训练集（后 m 各元素），计算 alpha * h(X[i]) * Y[i]
+/// struct ada_handles 的回调函数，更新概率分布。
+/** 使用常规方法更新概率分布，并将中间值 vals 数组置为 alpha * h(X[i]), 
+ * i = 0, 1, ..., vals_len - 1 */
 void update_D(flt_t D[], flt_t vals[], num_t vals_len, num_t m,
 	      const void *label, flt_t alpha);
 
-// struct ada_handles 的回调函数，计算检测率、假阳率，据此判断是否继续训练
+/// struct ada_handles 的回调函数，计算检测率、假阳率，据此判断是否继续训练
 static bool wl_next(struct ada_item *item, void *adaboost,
 		    const flt_t vals[], num_t vals_len);
-
-// 当全部训练样本分类成功时执行的函数
-// 判断验证集的假阳率、检测率是否满足要求
-static bool all_pass(struct train_setting *st);
 
 /*******************************************************************************
  * 				    函数定义
@@ -52,10 +37,10 @@ bool haar_ada_approx_train(struct haar_adaboost *adaboost, flt_t * d,
 			   const label_t Y[], const struct wl_handles *handles)
 {
 	struct ada_handles ada_hl;
-	ada_hl_init(&ada_hl, l, m, get_vals, alpha_approx, wl_next, init_D,
+	ada_hl_init(&ada_hl, l, m, haar_get_vals, alpha_approx, wl_next, init_D,
 		    update_D);
-	return train_framework(adaboost, d, f, l, m, h, w, X, X2, Y, all_pass,
-			       handles, &ada_hl);
+	return train_framework(adaboost, d, f, l, m, h, w, X, X2, Y,
+			       haar_all_pass, handles, &ada_hl);
 }
 
 bool haar_ada_newton_train(struct haar_adaboost *adaboost, flt_t * d,
@@ -64,10 +49,10 @@ bool haar_ada_newton_train(struct haar_adaboost *adaboost, flt_t * d,
 			   const label_t Y[], const struct wl_handles *handles)
 {
 	struct ada_handles ada_hl;
-	ada_hl_init(&ada_hl, l, m, get_vals, alpha_newton, wl_next, init_D,
+	ada_hl_init(&ada_hl, l, m, haar_get_vals, alpha_newton, wl_next, init_D,
 		    update_D);
-	return train_framework(adaboost, d, f, l, m, h, w, X, X2, Y, all_pass,
-			       handles, &ada_hl);
+	return train_framework(adaboost, d, f, l, m, h, w, X, X2, Y,
+			       haar_all_pass_cf, handles, &ada_hl);
 }
 
 flt_t haar_ada_h(const struct haar_adaboost *adaboost, imgsz_t h, imgsz_t w,
@@ -92,41 +77,6 @@ flt_t haar_ada_h(const struct haar_adaboost *adaboost, imgsz_t h, imgsz_t w,
 /*******************************************************************************
  * 				  静态函数定义
  ******************************************************************************/
-// 中间值数组 vals 将保存弱学习器输出值 h(X[i])
-enum ada_result get_vals(flt_t vals[], num_t vals_len,
-			 const void *weaklearner, num_t m, const void *sample,
-			 const void *label, const flt_t D[])
-{
-	num_t i;
-	const struct sp_wrap *sp = sample;
-	const label_t *Y = label;
-	for (i = 0; i < sp->l; ++i)	// 验证集输出值
-		vals[i] = sp->handles->hypothesis.haar(weaklearner, sp->h,
-						       sp->w, sp->w,
-						       (void *)sp->X[i],
-						       (void *)sp->X2[i], 1);
-
-	flt_t err = 0;
-	for (i = sp->l; i < vals_len; ++i) {	// 计算训练集输出值 * Y[i]
-		vals[i] =
-		    sp->handles->hypothesis.haar(weaklearner, sp->h, sp->w,
-						 sp->w, (void *)sp->X[i],
-						 (void *)sp->X2[i],
-						 1) * Y[i - sp->l];
-		if (vals[i] <= 0)	// 训练误差计算
-			err += D[i - sp->l];
-	}
-#ifdef LOG
-	printf("Weaklearner error rate: %f\n", err);
-#endif
-	if (err == 0)
-		return ADA_ALL_PASS;
-	else if (err < 0.5)
-		return ADA_SUCCESS;
-	else
-		return ADA_FAILURE;
-}
-
 void init_D(flt_t D[], num_t m, const void *label)
 {
 	num_t i;
@@ -201,9 +151,4 @@ link_list_err:
 malloc_err:
 	item->status = false;
 	return true;
-}
-
-bool all_pass(struct train_setting *st)
-{
-	return ALL_PASS(st, OP_VAL);
 }

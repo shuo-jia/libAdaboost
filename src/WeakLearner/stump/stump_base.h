@@ -124,6 +124,7 @@ struct stump_opt_handles {
  * \param[in] ft_size 单个属性变量的长度（字节），即特征类型的长度
  * \param[in] m       样本数量
  * \param[in] samples 指向样本集的指针
+ * \param[in] label   指向标签集的指针
  * \param[in] D       样本集的概率分布
  * \param[in] handles 已初始化的回调函数集合
  * \return 训练成功则返回真，否则返回假

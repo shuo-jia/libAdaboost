@@ -105,6 +105,7 @@ static const num_t *get_vals_sort(num_t m, const void *samples,
  * \param[in] X        样本集
  * \param[in] m        样本数量
  * \param[in] n        样本特征数量
+ * \param[in] cache    缓存指针，缓存使用 vec_new_cache() 函数生成
  * \return 成功则返回真，失败则返回假
  */
 static bool init_train(struct sp_wrap *sp, struct stump_opt_handles *handles,

@@ -3,67 +3,73 @@
 #include "vec_adaboost.h"
 #include "vec_base_pvt.h"
 #include "AlphaCalc/alpha.h"
+/**
+ * \file vec_adaboost.c
+ * \brief Adaboost 函数实现：二分类任务、样本集为向量集
+ * \author Shuojia
+ * \version 1.0
+ * \date 2024-07-14
+ */
 
 /*******************************************************************************
  * 				  静态函数声明
  ******************************************************************************/
-/*
- * 回调函数集合
- * sample: 实际类型为 struct sp_wrap *
- * adaboost: 实际类型为 struct ada_wrap *
- */
-// 弱学习器训练函数
+/// 弱学习器训练函数，sample 实际类型为 struct sp_wrap *
 static bool wl_train(void *weaklearner, num_t m, const void *sample,
 		     const void *label, const flt_t D[]);
-// 获取下一弱学习器
+/// 获取下一弱学习器，adaboost 实际类型为 struct ada_wrap *
 static bool wl_next(struct ada_item *item, void *adaboost,
 		    const flt_t vals[], num_t vals_len);
-// 获取弱学习器输出
+/// 获取弱学习器输出，sample 实际类型为 struct sp_wrap *
 static enum ada_result get_vals(flt_t vals[], num_t vals_len,
 				const void *weaklearner, num_t m,
 				const void *sample, const void *label,
 				const flt_t D[]);
-// 初始化概率分布数组
+/// 初始化概率分布数组
 static void init_D(flt_t D[], num_t m, const void *label);
-// 更新概率分布数组
+/// 更新概率分布数组
 static void update_D(flt_t D[], flt_t vals[], num_t vals_len, num_t m,
 		     const void *label, flt_t alpha);
 
-/*
- * 初始化 Adaboost 回调函数集
- * handles: 需要初始化的 Adaboost 回调函数集
- * m: 样本数量
- * train: 函数指针，用于对单个弱学习器进行训练，见 adaboost_base.h 说明
- * get_vals: 计算中间值 Y[i] * h_t(x[i]) 并保存到数组中，见 adaboost_base.h 说明
- * get_alpha: 计算 alpha 的值，可为 AlphaCalc/alpha.h 中的函数
- * next: 函数指针，用于获取下一轮弱学习器及其系数的地址，见 adaboost_base.h 说明
+/**
+ * \brief 初始化 Adaboost 回调函数集
+ * \param[out] handles  需要初始化的 Adaboost 回调函数集
+ * \param[in] m         样本数量
+ * \param[in] train     函数指针，用于对单个弱学习器进行训练，见 adaboost_base.h 说明
+ * \param[in] get_vals  计算中间值 Y[i] * h_t(x[i]) 并保存到数组中，见 adaboost_base.h 说明
+ * \param[in] get_alpha 计算 alpha 的值，可为 AlphaCalc/alpha.h 中的函数
+ * \param[in] next      函数指针，用于获取下一轮弱学习器及其系数的地址，见 adaboost_base.h 说明
  */
 static inline void ada_hl_init(struct ada_handles *handles, num_t m,
 			       ada_train_fn train, ada_vals_fn get_vals,
 			       ada_alpha_fn get_alpha, ada_next_fn next);
 
-/*
- * 初始化 Adaboost
- * ada: 指向未初始化的结构体
- * T: 训练轮数
- * using_fold: 表示是否将弱学习器系数并入弱学习器
- * handles: 弱学习器回调函数集合
- * 返回值：内存分配成功返回真，否则返回假
+/**
+ * \brief 初始化 Adaboost
+ * \param[out] ada       指向未初始化的结构体
+ * \param[in] T          训练轮数
+ * \param[in] using_fold 表示是否将弱学习器系数并入弱学习器
+ * \param[in] handles    弱学习器回调函数集合
+ * \return 内存分配成功返回真，否则返回假
  */
 static inline bool vec_ada_init(struct vec_adaboost *ada, turn_t T,
 				bool using_fold,
 				const struct wl_handles *handles);
 
-// 当全部样本分类成功时将被调用，参数 ada 内将保存已训练的轮数
-// 弱学习器系数不并入弱学习器
+/// 当全部样本分类成功时将被调用，参数 ada 将保存已训练的轮数
+/** （弱学习器系数不并入弱学习器）*/
 static bool all_pass(struct ada_wrap *ada, const struct wl_handles *hl);
-// 弱学习器系数并入弱学习器，无需复制弱学习器系数
+
+/// 当全部样本分类成功时将被调用，参数 ada 将保存已训练的轮数
+/** （弱学习器系数并入弱学习器，不复制弱学习器系数）*/
 static bool all_pass_fold(struct ada_wrap *ada, const struct wl_handles *hl);
 
-// 训练模板
-// adaboost, ..., handles: 与 vec_ada_xxx() 系列函数参数意义相同
-// get_alpha: 弱学习器系数计算函数（回调函数）
-// all_pass: 样本全部分类成功时调用的回调函数（all_pass_fn 类型）
+/**
+ * \brief 训练模板
+ * \param[in] get_alpha: 弱学习器系数计算函数（回调函数）
+ * \param[in] all_pass: 样本全部分类成功时调用的回调函数（all_pass_fn 类型）
+ * \details \copydetails vec_ada_train_fn
+ */
 static inline bool train_framework(struct vec_adaboost *adaboost, turn_t T,
 				   num_t m, dim_t n, const sample_t X[m][n],
 				   const label_t Y[], bool cache_on,

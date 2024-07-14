@@ -3,70 +3,67 @@
 #define MVEC_ADABOOST_H
 #include "boost_cfg.h"
 #include "WeakLearner/weaklearner.h"
+/**
+ * \file mvec_adaboost.h
+ * \brief Adaboost 分类器定义与函数声明：多分类任务、样本集为向量集
+ * \author Shuojia
+ * \version 1.0
+ * \date 2024-07-14
+ */
 
 /*******************************************************************************
  * 				    类型定义
  ******************************************************************************/
-// 输入样本为向量集的多分类 Adaboost 学习器
+/// 输入样本为向量集的多分类 Adaboost 学习器
 struct mvec_adaboost {
-	turn_t group_len;		// 弱学习器分组数量
-	mlabel_t dim;			// 单个弱学习器分组中弱学习器的数量
-	unsigned char *weaklearner;	// 弱学习器数组地址
-	flt_t *alpha;			// 弱学习器系数数组的地址
+	turn_t group_len;		///< 弱学习器分组数量
+	mlabel_t dim;			///< 单个弱学习器分组中弱学习器的数量
+	unsigned char *weaklearner;	///< 弱学习器数组地址
+	flt_t *alpha;			///< 弱学习器系数数组的地址
 };
 
 /*******************************************************************************
  * 				    函数声明
  ******************************************************************************/
 
-/*
- * 初始化 Adaboost
- * ada: 指向未初始化的结构体
- * group_len: 弱学习器分组数量
- * dim: 单个弱学习器分组中弱学习器的数量
- * using_fold: 表示是否将弱学习器系数并入弱学习器
- * handles: 弱学习器回调函数集合
- * 返回值：内存分配成功返回真，否则返回假
+/**
+ * \brief 初始化 mvec_adaboost
+ * \param[out] ada       指向未初始化的结构体
+ * \param[in] group_len  弱学习器分组数量
+ * \param[in] dim        单个弱学习器分组中弱学习器的数量
+ * \param[in] using_fold 表示是否将弱学习器系数并入弱学习器
+ * \param[in] handles    弱学习器回调函数集合
+ * \return 内存分配成功返回真，否则返回假
  */
 bool mvec_ada_init(struct mvec_adaboost *ada, turn_t group_len,
 		   mlabel_t dim, bool using_fold,
 		   const struct wl_handles *handles);
 
-/*
- * 从文件中读取 Adaboost
- * adaboost: 指向未初始化的 struct mvec_adaboost 结构体
- * file: 已打开的文件
- * handles: 弱学习器回调函数集合
- * 返回值：成功则返回真；失败则返回假
+/**
+ * \brief 从文件中读取 mvec_adaboost
+ * \details \copydetails mvec_ada_read_fn
  */
 bool mvec_ada_read(struct mvec_adaboost *adaboost, FILE * file,
 		   const struct wl_handles *handles);
 
-/*
- * 将 Adaboost 结构体写入到文件
- * adaboost: 指向已保存训练结果的 struct mvec_adaboost 结构体
- * file: 已打开的文件
- * handles: 弱学习器回调函数集合
- * 返回值：成功则返回真；失败则返回假
+/**
+ * \brief 将 mvec_adaboost 结构体写入到文件
+ * \details \copydetails mvec_ada_write_fn
  */
 bool mvec_ada_write(const struct mvec_adaboost *adaboost, FILE * file,
 		    const struct wl_handles *handles);
 
-/*
- * 对 Adaboost 进行深度复制
- * dst: 指向未初始化的 struct mvec_adaboost 结构体
- * src: 指向已初始化的 struct mvec_adaboost 结构体，内容将被复制到 dst
- * handles: 弱学习器回调函数集合
- * 返回值：成功则返回 dst；失败则返回 NULL
+/**
+ * \brief 对 mvec_adaboost 进行深度复制
+ * \details \copydetails mvec_ada_copy_fn
  */
 void *mvec_ada_copy(struct mvec_adaboost *dst,
 		    const struct mvec_adaboost *src,
 		    const struct wl_handles *handles);
 
-/*
- * 内存释放方法
- * adaboost: 指向已保存训练结果的 struct mvec_adaboost 结构体
- * handles: 弱学习器回调函数集合
+/**
+ * \brief mvec_adaboost 内存释放方法
+ * \details \copydetails mvec_ada_free_fn
  */
 void mvec_ada_free(struct mvec_adaboost *adaboost,
 		   const struct wl_handles *handles);
