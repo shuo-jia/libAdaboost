@@ -241,8 +241,8 @@ void wl_output(flt_t vals[], num_t vals_len, const void *wl,
 {
 	for (num_t i = 0; i < vals_len; ++i)
 		vals[i] =
-		    sp->handles->hypothesis.haar(weaklearner, sp->h, sp->w,
-						 sp->w, (void *)sp->X[i],
+		    sp->handles->hypothesis.haar(wl, sp->h, sp->w, sp->w,
+						 (void *)sp->X[i],
 						 (void *)sp->X2[i], 1);
 }
 
@@ -251,8 +251,8 @@ void wl_output_cf(flt_t vals[], num_t vals_len, const void *wl,
 {
 	for (num_t i = 0; i < vals_len; ++i)
 		vals[i] =
-		    sp->handles->hypothesis.haar_cf(weaklearner, sp->h, sp->w,
-						    sp->w, (void *)sp->X[i],
+		    sp->handles->hypothesis.haar_cf(wl, sp->h, sp->w, sp->w,
+						    (void *)sp->X[i],
 						    (void *)sp->X2[i], 1);
 }
 
