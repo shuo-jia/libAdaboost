@@ -88,8 +88,9 @@ typedef bool (*wl_train_vec_fn)(void *stump, num_t m, dim_t n,
  * \return 成功则返回真，否则返回假
  */
 typedef bool (*wl_train_haar_fn)(void *stump, num_t m, imgsz_t h, imgsz_t w,
-				 const sample_t * X[], const sample_t * X2[],
-				 const label_t Y[], const flt_t D[]);
+				 const sample_t * const X[],
+				 const sample_t * const X2[], const label_t Y[],
+				 const flt_t D[]);
 
 /**
  * \brief 回调函数类型：从文件中读取弱学习器

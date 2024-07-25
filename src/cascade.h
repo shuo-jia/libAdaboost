@@ -13,12 +13,11 @@
 /*******************************************************************************
  * 				    类型定义
  ******************************************************************************/
-/// 表示一个矩形
+/// 表示一个矩形（正方形）
 struct cas_rect {
 	imgsz_t start_x;		///< 左上角横坐标
 	imgsz_t start_y;		///< 左上角纵坐标
-	imgsz_t height;			///< 矩形高度
-	imgsz_t width;			///< 矩形宽度
+	imgsz_t len;			///< 边长（正方形）
 };
 
 /// 含有所检测目标的矩形框
@@ -35,31 +34,60 @@ struct cascade {
 	flt_t det_ratio;		///< 检测率
 };
 
+/**
+ * \brief 回调函数类型：获取图片及人脸矩形框。
+ * 	每次执行，都将获取一张包含人脸的图片及表示人脸位置的矩形框，训练时将从
+ * 	该图片截取人脸，直至取得给定数量的人脸样本
+ * \param[out] h        用于保存图片高度
+ * \param[out] w        用于保存图片宽度
+ * \param[out] rect     用于保存人脸框的位置及大小
+ * \param[in, out] args 用户自定义的参数，用于保证可重入性
+ * \return 成功则返回灰度图片地址，否则返回 NULL。灰度图片用一个一维数组表示，灰度
+ * 			值矩阵按行优先存储
+ */
+typedef const sample_t *(*cas_face_fn)(imgsz_t * h, imgsz_t * w,
+				       struct cas_rect * rect, void *args);
+
+/**
+ * \brief 回调函数类型，获取非人脸图片。
+ *      每次执行，都将获取一张不包含人脸的图片，图片可循环使用。训练时将从该图
+ *      片随机截取非人脸样本
+ * \param[out] h        用于保存图片高度
+ * \param[out] w        用于保存图片宽度
+ * \param[in, out] args 用户自定义的参数，用于保证可重入性
+ * \return 成功则返回灰度图片地址，否则返回 NULL。灰度图片用一个一维数组表示，灰度
+ * 			值矩阵按行优先存储
+ */
+typedef const sample_t *(*cas_non_face_fn)(imgsz_t * h, imgsz_t * w, void *args);
+
 /*******************************************************************************
  * 				    函数声明
  ******************************************************************************/
 /**
  * \brief cascade 分类器训练
- * \param[out] cascade 要进行训练的级联学习器
- * \param[in] d        单个 Adaboost 分类器所允许的最小检测率
- * \param[in] f        单个 Adaboost 分类器所允许的最大假阳率
- * \param[in] F        级联分类器所允许的最大假阳率
- * \param[in] l        验证集样本数量
- * \param[in] m        训练集样本数量
- * \param[in] n        正方形窗口的边长，即训练图像的长和宽
- * \param[in] X        积分图数组，前 l 个为验证集，后 m 个为训练集
- * \param[in] X2       灰度值平方的积分图数组，前 l 个为验证集，后 m 个为训练集
- * \param[in] Y        样本对应的分类
- * \param[in] hl       Adaboost 相关回调函数集合
- * \return 如果学习算法运行成功，则返回真；运行失败则返回假。
+ * \param[out] cascade     要进行训练的级联学习器
+ * \param[in] d            单个 Adaboost 分类器所允许的最小检测率
+ * \param[in] f            单个 Adaboost 分类器所允许的最大假阳率
+ * \param[in] F            级联分类器所允许的最大假阳率
+ * \param[in] train_pct    训练集在样本中的占比，其余样本作为验证集
+ * \param[in] face         人脸样本数量
+ * \param[in] non_face     非人脸样本数量
+ * \param[in] img_size     用作训练的图片尺寸
+ * \param[in] args         用户自定义参数
+ * \param[in] get_face     回调函数，获取人脸样本，参数 args 将被传递给该函数
+ * \param[in] get_non_face 回调函数，获取非人脸样本，参数 args 将被传递给该函数
+ * \param[in] hl           级联分类器回调函数集
+ * \return 
  */
-bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F, num_t l,
-	       num_t m, imgsz_t n, sample_t * const X[], sample_t * const X2[],
-	       const label_t Y[], const struct haar_ada_handles *hl);
+bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F,
+	       flt_t train_pct, num_t face, num_t non_face, num_t img_size,
+	       void *args, cas_face_fn get_face, cas_non_face_fn get_non_face,
+	       struct haar_ada_handles *hl);
 
 /**
  * \brief 将级联分类器 src 追加到级联分类器 dst 之后，训练图片大小必须相同
- * \param[out] dst     目标级联分类器，追加成功后 dst 的检测率、假阳率字段不保证精确
+ * \param[out] dst     目标级联分类器，追加成功后 dst 的检测率、假阳率字段不保证
+ *                     精确
  * \param[in, out] src 源级联分类器，追加成功后该级联分类器被初始化为空
  * \return 成功则返回真，否则返回假
  */
@@ -91,22 +119,6 @@ bool cas_read(struct cascade *cascade, FILE * file,
  * \param[in] hl      Adaboost 相关回调函数集合
  */
 void cas_free(struct cascade *cascade, const struct haar_ada_handles *hl);
-
-/**
- * \brief 计算积分图
- * \param[in] m  图像高度
- * \param[in] n  图像宽度
- * \param[out] x 保存有 flt_t 型矩阵的灰度图像，积分图也将保存在此
- */
-void cas_intgraph(imgsz_t m, imgsz_t n, flt_t x[m][n]);
-
-/**
- * \brief 计算积分图（对灰度值的平方累加）
- * \param[in] m  图像高度
- * \param[in] n  图像宽度
- * \param[out] x 保存有 flt_t 型矩阵的灰度图像，积分图也将保存在此
- */
-void cas_intgraph2(imgsz_t m, imgsz_t n, flt_t x[m][n]);
 
 /**
  * \brief 计算两个矩形之间的重叠度

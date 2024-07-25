@@ -218,8 +218,8 @@ struct mvec_ada_handles {
  */
 typedef bool (*haar_ada_train_fn)(struct haar_adaboost * adaboost, flt_t * d,
 				  flt_t * f, num_t l, num_t m, imgsz_t h,
-				  imgsz_t w, const sample_t * X[],
-				  const sample_t * X2[], const label_t Y[],
+				  imgsz_t w, const sample_t * const X[],
+				  const sample_t * const X2[], const label_t Y[],
 				  const struct wl_handles * handles);
 
 /**

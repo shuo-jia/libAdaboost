@@ -56,8 +56,8 @@
  * \return 成功则返回真，失败则返回假
  */
 static bool init_train(struct sp_wrap *sp, struct stump_opt_handles *handles,
-		       const sample_t ** X, const sample_t ** X2, num_t m,
-		       imgsz_t h, imgsz_t w);
+		       const sample_t * const *X, const sample_t * const *X2,
+		       num_t m, imgsz_t h, imgsz_t w);
 
 /**
  * \brief 训练资源释放操作
@@ -89,15 +89,16 @@ flt_t haar_stump_cf_h(const void *stump, imgsz_t h, imgsz_t w, imgsz_t wid,
 }
 
 bool haar_stump_train(void *stump, num_t m, imgsz_t h, imgsz_t w,
-		      const sample_t * X[], const sample_t * X2[], const label_t
-		      Y[], const flt_t D[])
+		      const sample_t * const X[], const sample_t * const X2[],
+		      const label_t Y[], const flt_t D[])
 {
 	return TRAIN(stump, m, h, w, X, X2, Y, D, struct haar_stump *, cstump_opt);
 }
 
 bool haar_stump_cf_train(void *stump, num_t m, imgsz_t h, imgsz_t w,
-			 const sample_t * X[], const sample_t * X2[],
-			 const label_t Y[], const flt_t D[])
+			 const sample_t * const X[],
+			 const sample_t * const X2[], const label_t Y[],
+			 const flt_t D[])
 {
 	return TRAIN(stump, m, h, w, X, X2, Y, D, struct haar_stump_cf *,
 		     cstump_cf_opt);
@@ -107,8 +108,8 @@ bool haar_stump_cf_train(void *stump, num_t m, imgsz_t h, imgsz_t w,
  *				  静态函数实现
  ******************************************************************************/
 bool init_train(struct sp_wrap *sp, struct stump_opt_handles *handles,
-		const sample_t ** X, const sample_t ** X2, num_t m, imgsz_t h,
-		imgsz_t w)
+		const sample_t * const *X, const sample_t * const *X2, num_t m,
+		imgsz_t h, imgsz_t w)
 {
 	if ((sp->vector = malloc(sizeof(sample_t) * m)) == NULL)
 		return false;

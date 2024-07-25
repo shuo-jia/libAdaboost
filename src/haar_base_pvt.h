@@ -36,8 +36,8 @@ struct sp_wrap {
 	num_t l;			///< 验证集样本数量
 	imgsz_t h;			///< 训练图片的高度
 	imgsz_t w;			///< 训练图片的宽度
-	const sample_t **X;		///< 积分图指针数组（前 l 个为验证集）
-	const sample_t **X2;		///< 像素值平方的积分图指针数组
+	const sample_t * const *X;	///< 积分图指针数组（前 l 个为验证集）
+	const sample_t * const *X2;	///< 像素值平方的积分图指针数组
                                         /**<（前 l 个为验证集）*/
 	const struct wl_handles *handles;	///< 弱学习器回调函数集
 };
@@ -110,7 +110,7 @@ void ada_hl_init(struct ada_handles *ada_hl, num_t l, num_t m,
  */
 bool init_setting(struct train_setting *st, struct haar_adaboost *adaboost,
 		  flt_t d, flt_t f, num_t l, imgsz_t h, imgsz_t w,
-		  const sample_t * X[], const sample_t * X2[],
+		  const sample_t * const X[], const sample_t * const X2[],
 		  const label_t Y[], const struct wl_handles *wl_hl);
 
 /**
@@ -167,9 +167,9 @@ static inline void haar_ada_init(struct haar_adaboost *ada)
  */
 static inline bool train_framework(struct haar_adaboost *adaboost, flt_t * d,
 				   flt_t * f, num_t l, num_t m, imgsz_t h,
-				   imgsz_t w, const sample_t * X[],
-				   const sample_t * X2[], const label_t Y[],
-				   all_pass_fn all_pass,
+				   imgsz_t w, const sample_t * const X[],
+				   const sample_t * const X2[],
+				   const label_t Y[], all_pass_fn all_pass,
 				   const struct wl_handles *handles,
 				   const struct ada_handles *ada_hl)
 {

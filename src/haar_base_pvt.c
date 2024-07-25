@@ -84,7 +84,7 @@ void ada_hl_init(struct ada_handles *ada_hl, num_t l, num_t m,
 
 bool init_setting(struct train_setting *st, struct haar_adaboost *adaboost,
 		  flt_t d, flt_t f, num_t l, imgsz_t h, imgsz_t w,
-		  const sample_t * X[], const sample_t * X2[],
+		  const sample_t * const X[], const sample_t * const X2[],
 		  const label_t Y[], const struct wl_handles *wl_hl)
 {
 	st->sp.l = l;

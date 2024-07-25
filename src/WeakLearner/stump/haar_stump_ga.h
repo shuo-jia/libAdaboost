@@ -18,7 +18,7 @@
  * \details \copydetails wl_train_haar_fn
  */
 bool haar_stump_ga_train(void *stump, num_t m, imgsz_t h, imgsz_t w,
-			 const sample_t * X[], const sample_t * X2[],
+			 const sample_t * const X[], const sample_t * const X2[],
 			 const label_t Y[], const flt_t D[]);
 
 /**
@@ -27,7 +27,8 @@ bool haar_stump_ga_train(void *stump, num_t m, imgsz_t h, imgsz_t w,
  * \details \copydetails wl_train_haar_fn
  */
 bool haar_stump_ga_cf_train(void *stump, num_t m, imgsz_t h, imgsz_t w,
-			    const sample_t * X[], const sample_t * X2[],
-			    const label_t Y[], const flt_t D[]);
+			    const sample_t * const X[],
+			    const sample_t * const X2[], const label_t Y[],
+			    const flt_t D[]);
 
 #endif

@@ -42,8 +42,9 @@ static bool wl_next(struct ada_item *item, void *adaboost, const flt_t vals[],
  ******************************************************************************/
 bool haar_ada_asym_train(struct haar_adaboost *adaboost, flt_t * d, flt_t * f,
 			 num_t l, num_t m, imgsz_t h, imgsz_t w,
-			 const sample_t * X[], const sample_t * X2[],
-			 const label_t Y[], const struct wl_handles *handles)
+			 const sample_t * const X[],
+			 const sample_t * const X2[], const label_t Y[],
+			 const struct wl_handles *handles)
 {
 	struct ada_handles ada_hl;
 	ada_hl_init(&ada_hl, l, m, haar_get_vals_cf, alpha_eq_1, wl_next,
@@ -54,8 +55,8 @@ bool haar_ada_asym_train(struct haar_adaboost *adaboost, flt_t * d, flt_t * f,
 
 bool haar_ada_asym_imp_train(struct haar_adaboost *adaboost, flt_t * d,
 			     flt_t * f, num_t l, num_t m, imgsz_t h, imgsz_t w,
-			     const sample_t * X[], const sample_t * X2[],
-			     const label_t Y[],
+			     const sample_t * const X[],
+			     const sample_t * const X2[], const label_t Y[],
 			     const struct wl_handles *handles)
 {
 	struct ada_handles ada_hl;

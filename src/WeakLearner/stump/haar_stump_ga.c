@@ -101,8 +101,8 @@ static void ga_crossover(void *child, const void *parent1,
 static void ga_mutate(void *individual, const void *samples);
 /// 进化算法回调函数：对样本集包装结构体、回调函数集进行初始化
 static bool init_setting(struct sp_wrap *sp, struct stump_ga_handles *hl,
-			 num_t m, const sample_t ** X, const sample_t ** X2,
-			 imgsz_t h, imgsz_t w);
+			 num_t m, const sample_t * const *X,
+			 const sample_t * const *X2, imgsz_t h, imgsz_t w);
 /// 释放内存空间
 static inline void free_setting(struct sp_wrap *sp);
 
@@ -110,7 +110,7 @@ static inline void free_setting(struct sp_wrap *sp);
  * 				    函数实现
  ******************************************************************************/
 bool haar_stump_ga_train(void *stump, num_t m, imgsz_t h, imgsz_t w,
-			 const sample_t * X[], const sample_t * X2[],
+			 const sample_t * const X[], const sample_t * const X2[],
 			 const label_t Y[], const flt_t D[])
 {
 	struct sp_wrap sp;
@@ -130,8 +130,9 @@ bool haar_stump_ga_train(void *stump, num_t m, imgsz_t h, imgsz_t w,
 }
 
 bool haar_stump_ga_cf_train(void *stump, num_t m, imgsz_t h, imgsz_t w,
-			    const sample_t * X[], const sample_t * X2[],
-			    const label_t Y[], const flt_t D[])
+			    const sample_t * const X[],
+			    const sample_t * const X2[], const label_t Y[],
+			    const flt_t D[])
 {
 	struct sp_wrap sp;
 	struct stump_ga_handles hl;
@@ -193,8 +194,8 @@ void ga_mutate(void *individual, const void *samples)
 }
 
 bool init_setting(struct sp_wrap *sp, struct stump_ga_handles *hl, num_t m,
-		  const sample_t ** X, const sample_t ** X2, imgsz_t h,
-		  imgsz_t w)
+		  const sample_t * const *X, const sample_t * const *X2,
+		  imgsz_t h, imgsz_t w)
 {
 	sp->X = X;
 	sp->X2 = X2;

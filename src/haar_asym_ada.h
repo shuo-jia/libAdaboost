@@ -22,8 +22,9 @@
  */
 bool haar_ada_asym_train(struct haar_adaboost *adaboost, flt_t * d, flt_t * f,
 			 num_t l, num_t m, imgsz_t h, imgsz_t w,
-			 const sample_t * X[], const sample_t * X2[],
-			 const label_t Y[], const struct wl_handles *handles);
+			 const sample_t * const X[],
+			 const sample_t * const X2[], const label_t Y[],
+			 const struct wl_handles *handles);
 
 /**
  * \brief haar_adaboost 训练方法，将 alpha 合并到弱学习器 h 中，即 alpha 恒为 1；
@@ -32,8 +33,8 @@ bool haar_ada_asym_train(struct haar_adaboost *adaboost, flt_t * d, flt_t * f,
  */
 bool haar_ada_asym_imp_train(struct haar_adaboost *adaboost, flt_t * d,
 			     flt_t * f, num_t l, num_t m, imgsz_t h, imgsz_t w,
-			     const sample_t * X[], const sample_t * X2[],
-			     const label_t Y[],
+			     const sample_t * const X[],
+			     const sample_t * const X2[], const label_t Y[],
 			     const struct wl_handles *handles);
 
 /**
