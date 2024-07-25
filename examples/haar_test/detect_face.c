@@ -7,14 +7,16 @@
 #include "cascade.h"
 #include "image.h"
 #include "fb_image.h"
-#include "lib/sample.h"
 
 #define MODEL_PATH "./cascade_data"
 #define DIRPATH "../BioID-FaceDatabase-V1.2/"
 // 训练集数量，将跳过训练集
-#define TRAIN_COUNT 1000
+#define TRAIN_COUNT 1
+// 文件名最大长度
+#define MAX_FILENAME 128
 
-void show_face (__Canvas *pcanvas, struct cascade *pcascade,
+static void rect_cast (struct rectangle *rect, const struct cas_rect * cas_rect);
+static void show_face (__Canvas *pcanvas, struct cascade *pcascade,
 		const struct haar_ada_handles * handles, DIR *dir);
 
 int main (void)
@@ -94,4 +96,11 @@ void show_face (__Canvas *pcanvas, struct cascade *pcascade,
 		if ((ch = getchar()) == 'q')
 			break;
 	}
+}
+
+void rect_cast (struct rectangle *rect, const struct cas_rect * cas_rect)
+{
+	rect->start_x = cas_rect->start_x;
+	rect->start_y = cas_rect->start_y;
+	rect->width = rect->height = cas_rect->len;
 }

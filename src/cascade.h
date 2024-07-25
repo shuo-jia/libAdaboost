@@ -15,23 +15,23 @@
  ******************************************************************************/
 /// 表示一个矩形（正方形）
 struct cas_rect {
-	imgsz_t start_x;		///< 左上角横坐标
-	imgsz_t start_y;		///< 左上角纵坐标
-	imgsz_t len;			///< 边长（正方形）
+	imgsz_t start_x;	///< 左上角横坐标
+	imgsz_t start_y;	///< 左上角纵坐标
+	imgsz_t len;		///< 边长（正方形）
 };
 
 /// 含有所检测目标的矩形框
 struct cas_det_rect {
-	struct cas_rect rect;		///< 矩形框的位置及大小
-	flt_t confidence;		///< 置信度
+	struct cas_rect rect;	///< 矩形框的位置及大小
+	flt_t confidence;	///< 置信度
 };
 
 /// 级联的 AdaBoost
 struct cascade {
 	struct link_list adaboost;	///< AdaBoost 链表
-	imgsz_t img_size;		///< 训练所用图片大小（正方形边长）
-	flt_t f_p_ratio;		///< 假阳率
-	flt_t det_ratio;		///< 检测率
+	imgsz_t img_size;	///< 训练所用图片大小（正方形边长）
+	flt_t f_p_ratio;	///< 假阳率
+	flt_t det_ratio;	///< 检测率
 };
 
 /**
@@ -45,8 +45,9 @@ struct cascade {
  * \return 成功则返回灰度图片地址，否则返回 NULL。灰度图片用一个一维数组表示，灰度
  * 			值矩阵按行优先存储
  */
-typedef const sample_t *(*cas_face_fn)(imgsz_t * h, imgsz_t * w,
-				       struct cas_rect * rect, void *args);
+typedef const unsigned char *(*cas_face_fn) (imgsz_t * h, imgsz_t * w,
+					     struct cas_rect * rect,
+					     void *args);
 
 /**
  * \brief 回调函数类型，获取非人脸图片。
@@ -54,11 +55,13 @@ typedef const sample_t *(*cas_face_fn)(imgsz_t * h, imgsz_t * w,
  *      片随机截取非人脸样本
  * \param[out] h        用于保存图片高度
  * \param[out] w        用于保存图片宽度
+ * \param[out] id       用于保存当前图像 id，需保证图像 id 唯一
  * \param[in, out] args 用户自定义的参数，用于保证可重入性
  * \return 成功则返回灰度图片地址，否则返回 NULL。灰度图片用一个一维数组表示，灰度
  * 			值矩阵按行优先存储
  */
-typedef const sample_t *(*cas_non_face_fn)(imgsz_t * h, imgsz_t * w, void *args);
+typedef const unsigned char *(*cas_non_face_fn) (imgsz_t * h, imgsz_t * w,
+						 num_t * id, void *args);
 
 /*******************************************************************************
  * 				    函数声明
@@ -74,13 +77,13 @@ typedef const sample_t *(*cas_non_face_fn)(imgsz_t * h, imgsz_t * w, void *args)
  * \param[in] non_face     非人脸样本数量
  * \param[in] img_size     用作训练的图片尺寸
  * \param[in] args         用户自定义参数
- * \param[in] get_face     回调函数，获取人脸样本，参数 args 将被传递给该函数
- * \param[in] get_non_face 回调函数，获取非人脸样本，参数 args 将被传递给该函数
+ * \param[in] get_face     回调函数，获取人脸样本，参数 args 将被传递给该函数；
+ * \param[in] get_non_face 回调函数，获取非人脸图片，参数 args 将被传递给该函数
  * \param[in] hl           级联分类器回调函数集
- * \return 
+ * \return 训练成功返回真，否则返回假
  */
 bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F,
-	       flt_t train_pct, num_t face, num_t non_face, num_t img_size,
+	       flt_t train_pct, num_t face, num_t non_face, imgsz_t img_size,
 	       void *args, cas_face_fn get_face, cas_non_face_fn get_non_face,
 	       struct haar_ada_handles *hl);
 

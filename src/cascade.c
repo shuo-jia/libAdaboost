@@ -1,4 +1,3 @@
-#include <sys/param.h>
 #include <string.h>
 #include <stdlib.h>
 #include <float.h>
@@ -13,6 +12,23 @@
  */
 
 /*******************************************************************************
+ *				   宏函数定义
+ ******************************************************************************/
+#define MAX(x, y)								\
+({										\
+ 	typeof(x) _x = (x);							\
+ 	typeof(y) _y = (y);							\
+	(_x > _y) ? _x : _y;							\
+})
+
+#define MIN(x, y)								\
+({										\
+ 	typeof(x) _x = (x);							\
+ 	typeof(y) _y = (y);							\
+	(_x < _y) ? _x : _y;							\
+})
+
+/*******************************************************************************
  * 				  静态函数声明
  ******************************************************************************/
 /// Adaboost 写入方法的包装函数，用作链表的回调函数
@@ -25,15 +41,11 @@ static void ada_free(void *adaboost, va_list ap);
 /// 使用极大值抑制方法处理重叠边框
 static void NMS(struct link_list *list, flt_t threshold);
 
-/// 返回一个一维数组，元素为 0, 1, ..., m-1 的随机排列；失败则返回 NULL
-/** 返回的数组可用 free() 函数释放内存 */
-static num_t *randperm(num_t m);
-
 /*******************************************************************************
  * 				    函数实现
  ******************************************************************************/
 bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F,
-	       flt_t train_pct, num_t face, num_t non_face, num_t img_size,
+	       flt_t train_pct, num_t face, num_t non_face, imgsz_t img_size,
 	       void *args, cas_face_fn get_face, cas_non_face_fn get_non_face,
 	       struct haar_ada_handles *hl)
 {
@@ -55,14 +67,14 @@ bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F,
 #ifdef LOG
 	printf("Training start.\n");
 #endif
-	while (cascade->f_p_ratio > F) {
+	while (true) {
 		ada_det_ratio = d;
 		ada_f_p_ratio = f;
 		if ((adaboost = malloc(sizeof(struct haar_adaboost))) == NULL)
 			goto new_ab_err;
 		if (!hl->train(adaboost, &ada_det_ratio, &ada_f_p_ratio, l, m,
-			       img_size, img_size, (void *)sample.X, (void *)sample.X2,
-			       sample.Y, &hl->wl_hl))
+			       img_size, img_size, (void *)sample.X,
+			       (void *)sample.X2, sample.Y, &hl->wl_hl))
 			goto train_ab_err;
 		if (!link_list_append(&cascade->adaboost, adaboost))
 			goto append_err;
@@ -78,24 +90,30 @@ bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F,
 		if (ada_f_p_ratio > f)
 			break;
 		// 调整样本
-		update_samples(&sample, &l, m, adaboost, hl);
+		if (cascade->f_p_ratio < F)
+			break;
+		if (!update_samples(&sample, img_size, &l, &m, args,
+				    get_non_face, cascade, hl))
+			goto update_err;
 	}
 #ifdef LOG
 	printf("Training end.\n");
 #endif
+	free_samples(&sample, l + m);
 	return true;
 
 append_err:
-	hl->free (adaboost, &hl->wl_hl);
+	hl->free(adaboost, &hl->wl_hl);
 train_ab_err:
 	free(adaboost);
+update_err:
 new_ab_err:
-	free_samples(&sample, face, non_face);
-	cas_free (cascade, hl);
+	free_samples(&sample, l + m);
+	cas_free(cascade, hl);
 	return false;
 }
 
-bool cas_cat(struct cascade *dst, struct cascade *src)
+bool cas_cat(struct cascade * dst, struct cascade * src)
 {
 	if (dst->img_size != src->img_size)
 		return false;
@@ -110,8 +128,8 @@ bool cas_cat(struct cascade *dst, struct cascade *src)
 	return true;
 }
 
-bool cas_write(const struct cascade *cascade, FILE * file,
-	       const struct haar_ada_handles *hl)
+bool cas_write(const struct cascade * cascade, FILE * file,
+	       const struct haar_ada_handles * hl)
 {
 	// 写入训练参数 d、f、F、训练图像大小
 	if (fwrite(&cascade->img_size, sizeof(imgsz_t), 1, file) < 1)
@@ -125,8 +143,8 @@ bool cas_write(const struct cascade *cascade, FILE * file,
 	return link_list_write(&cascade->adaboost, file, ada_write, hl);
 }
 
-bool cas_read(struct cascade *cascade, FILE * file,
-	      const struct haar_ada_handles *hl)
+bool cas_read(struct cascade * cascade, FILE * file,
+	      const struct haar_ada_handles * hl)
 {
 	// 读取训练参数 d、f、F
 	if (fread(&cascade->img_size, sizeof(imgsz_t), 1, file) < 1)
@@ -154,7 +172,7 @@ flt_t IoU(const struct cas_rect *rect1, const struct cas_rect *rect2)
 	intersection.start_y = MAX(rect1->start_y, rect2->start_y);
 	intersection.len =
 	    MIN(rect1->start_x + rect1->len,
-		rect2->start_x + rect2->len) - intersection.start_x;
+		  rect2->start_x + rect2->len) - intersection.start_x;
 	if (intersection.len < 0)
 		return 0;
 	flt_t s1 = rect1->len * rect1->len;
@@ -163,9 +181,9 @@ flt_t IoU(const struct cas_rect *rect1, const struct cas_rect *rect2)
 	return (flt_t) s / (s1 + s2 - s);
 }
 
-flt_t cas_h(const struct cascade *cascade, imgsz_t n, imgsz_t wid,
+flt_t cas_h(const struct cascade * cascade, imgsz_t n, imgsz_t wid,
 	    const flt_t x[n][wid], const flt_t x2[n][wid],
-	    const struct haar_ada_handles *hl)
+	    const struct haar_ada_handles * hl)
 {
 	flt_t scale = (flt_t) n / cascade->img_size;
 	flt_t result;
@@ -181,9 +199,9 @@ flt_t cas_h(const struct cascade *cascade, imgsz_t n, imgsz_t wid,
 	return result;
 }
 
-flt_t cas_nextobj(const struct cascade *cascade, struct cas_rect *rect,
+flt_t cas_nextobj(const struct cascade * cascade, struct cas_rect * rect,
 		  imgsz_t * delta, imgsz_t h, imgsz_t w, const flt_t x[][w],
-		  const flt_t x2[][w], const struct haar_ada_handles *hl)
+		  const flt_t x2[][w], const struct haar_ada_handles * hl)
 {
 	flt_t result;
 	const flt_t scale_times = 1.25;
@@ -222,8 +240,7 @@ struct link_list cas_detect(const struct cascade *cascade, imgsz_t h,
 	imgsz_t i, j;
 	struct link_list list;
 	struct cas_det_rect *rect_ptr = NULL;
-	struct cas_det_rect rect =
-	    { { 0, 0, cascade->img_size}, 0 };
+	struct cas_det_rect rect = { {0, 0, cascade->img_size}, 0 };
 	flt_t x[h][w];
 	flt_t x2[h][w];
 
@@ -284,35 +301,6 @@ void ada_free(void *adaboost, va_list ap)
 	hl->free(adaboost, &hl->wl_hl);
 }
 
-void update_samples(struct cas_sample *sp, num_t * l, num_t m,
-		    const struct haar_adaboost *adaboost,
-		    const struct haar_ada_handles *hl)
-{
-	num_t train_i;		// 训练集索引
-	num_t val_i;		// 验证集索引
-	num_t j = 0;		// 当前索引
-
-	for (val_i = 0; val_i < *l; ++val_i)
-		if (hl->h(adaboost, n, n, n, (void *)X[val_i],
-			  (void *)X2[val_i], 1, &hl->wl_hl) > 0) {
-			X[j] = X[val_i];
-			X2[j] = X2[val_i];
-			Y[j] = Y[val_i];
-			++j;
-		}
-	*l = j;
-	for (train_i = val_i; train_i < val_i + *m; ++train_i)
-		if (Y[train_i] > 0 ||
-		    hl->h(adaboost, n, n, n, (void *)X[train_i],
-			  (void *)X2[train_i], 1, &hl->wl_hl) > 0) {
-			X[j] = X[train_i];
-			X2[j] = X2[train_i];
-			Y[j] = Y[train_i];
-			++j;
-		}
-	*m = j - *l;
-}
-
 // 极大值抑制方法（NMS）处理重叠窗口
 void NMS(struct link_list *list, flt_t threshold)
 {
@@ -362,25 +350,4 @@ void NMS(struct link_list *list, flt_t threshold)
 			}
 		}
 	}
-}
-
-num_t *randperm(num_t m)
-{
-	num_t *arr = malloc(sizeof(num_t) * m);
-	if (arr == NULL)
-		return NULL;
-	for (num_t i = 0; i < m; ++i)
-		arr[i] = i;
-
-	// 随机排列（随机交换）
-	num_t tmp;
-	num_t index;
-	for (num_t i = m - 1; i > 0; --i) {
-		index = rand() % i;
-		tmp = arr[i];
-		arr[i] = arr[index];
-		arr[index] = tmp;
-	}
-
-	return arr;
 }

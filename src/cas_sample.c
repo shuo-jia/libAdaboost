@@ -1,6 +1,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cas_sample.h"
+/**
+ * \file cas_sample.c
+ * \brief Cascade 级联分类器的样本集类型函数实现
+ * \author Shuojia
+ * \version 1.0
+ * \date 2024-07-21
+ */
 
 /*******************************************************************************
  *                                    宏函数定义
@@ -13,8 +20,9 @@
  * \param[in] h        灰度图像的高度
  * \param[in] w        灰度图像的宽度
  * \param[in] img      灰度图像，保存有 h*w 灰度值的数组
- * \param[in] rect_ptr 矩形框，struct cas_rect *类型，矩形框内的灰度图像被处理为样本
- * \param[in] label    此样本的标签，+1 或                             - 1
+ * \param[in] rect_ptr 矩形框，struct cas_rect *类型，矩形框内的灰度图像被处理为
+ * 		       样本
+ * \param[in] label    此样本的标签，+1 或 - 1
  */
 #define IMG_2_SP(sp, sp_size, i, h, w, img, rect_ptr, label)                    \
 do{                                                                             \
@@ -42,7 +50,7 @@ do {										\
  * 				  静态函数声明
  ******************************************************************************/
 /// 为样本集的成员申请内存空间，但不对内存空间进行初始化
-static bool alloc_sample (struct cas_sample * sample, num_t m, imgsz_t img_size);
+static bool alloc_sample(struct cas_sample *sample, num_t m, imgsz_t img_size);
 
 /**
  * \brief 图片采样。对灰度图片的矩形区域进行采样，将采样结果（缩小后的矩形区域）
@@ -54,8 +62,8 @@ static bool alloc_sample (struct cas_sample * sample, num_t m, imgsz_t img_size)
  * \param[in] rect     矩形区域位置及大小
  */
 static void img_sampling(imgsz_t dst_size, sample_t dst[][dst_size],
-			  imgsz_t src_size, const sample_t src[][src_size],
-			  const struct cas_rect *rect);
+			 imgsz_t src_size, const unsigned char src[][src_size],
+			 const struct cas_rect *rect);
 
 /**
  * \brief 随机产生一个矩形框
@@ -69,97 +77,128 @@ static void rand_rect(struct cas_rect *rect, imgsz_t min_len, imgsz_t height,
 
 /**
  * \brief 随机排列样本
- * \param sp  已初始化的样本集
- * \param num 样本数量
+ * \param[in, out] sp 已初始化的样本集
+ * \param[in] num     样本数量
  */
-void shuffle (struct cas_sample *sp, num_t num);
+static void shuffle(struct cas_sample *sp, num_t num);
+
+/**
+ * \brief 使用假阳性图片作为样本添加至样本集，直至达到指定样本数量
+ * \param[out] sp          已初始化的样本集
+ * \param[in, out] index   当前索引。从参数 sp 的第 *index 个样本开始存放样本，
+ * 			   函数返回时 *index 置为未存放样本的索引（样本集末尾处）
+ * \param[in] m            最大样本数量
+ * \param[in] img_size     用作训练的图片尺寸
+ * \param[in, out] args    用户自定义的参数，用于保证可重入性
+ * \param[in] get_non_face 回调函数，获取非人脸图片，参数 args 将被传递给该函数
+ * \param[in] cascade      已训练的级联分类器
+ * \param[in] hl           指向 Adaboost 分类器回调函数集
+ * \return 成功则返回真，否则返回假
+ */
+static bool get_remain_samples(struct cas_sample *sp, num_t * index, num_t m,
+			       imgsz_t img_size, void *args,
+			       cas_non_face_fn get_non_face,
+			       const struct cascade *cascade,
+			       const struct haar_ada_handles *hl);
+
 /*******************************************************************************
  * 				    函数实现
  ******************************************************************************/
 bool init_samples(struct cas_sample *sp, imgsz_t img_size, num_t face,
-			 num_t non_face, void *args, cas_face_fn get_face,
-			 cas_non_face_fn get_non_face)
+		  num_t non_face, void *args, cas_face_fn get_face,
+		  cas_non_face_fn get_non_face)
 {
 	if (!alloc_sample(sp, face + non_face, img_size))
 		return false;
 
 	num_t index = 0;
-	imgsz_t h;		        // 图像高度
-	imgsz_t w;		        // 图像宽度
-	struct cas_rect rect;	        // 人脸框
-	const sample_t *x = NULL;	// 灰度图像
-        size_t graph_size = sizeof(sample_t) * img_size * img_size;
+	imgsz_t h;			// 图像高度
+	imgsz_t w;			// 图像宽度
+	num_t id;			// 图像序号
+	struct cas_rect rect;		// 人脸框
+	const unsigned char *x = NULL;	// 灰度图像
 	for (num_t i = 0; i < face; ++i) {
 		if ((x = get_face(&h, &w, &rect, args)) == NULL)
 			goto err;
-                IMG_2_SP(sp, img_size, index, h, w, x, &rect, 1);
+		IMG_2_SP(sp, img_size, index, h, w, x, &rect, 1);
 		++index;
 	}
 
 	for (num_t i = 0; i < non_face; ++i) {
-		if ((x = get_non_face(&h, &w, args)) == NULL)
+		if ((x = get_non_face(&h, &w, &id, args)) == NULL)
 			goto err;
 		rand_rect(&rect, img_size, h, w);
-                IMG_2_SP(sp, img_size, index, h, w, x, &rect, -1);
+		IMG_2_SP(sp, img_size, index, h, w, x, &rect, -1);
 		++index;
 	}
-        shuffle(sp, face + non_face);
+	shuffle(sp, face + non_face);
 
 	return true;
 err:
-        free_samples(sp, face + non_face);
-        return false;
+	free_samples(sp, face + non_face);
+	return false;
 }
 
-// TODO
-void update_samples(struct cas_sample *sp, imgsz_t img_size, num_t * l, num_t m,
-		    void *args, cas_non_face_fn get_non_face,
-		    const struct cascade *cascade,
-		    const struct haar_ada_handles *hl)
+bool update_samples(struct cas_sample * sp, imgsz_t img_size, num_t * l,
+		    num_t * m, void *args, cas_non_face_fn get_non_face,
+		    const struct cascade * cascade,
+		    const struct haar_ada_handles * hl)
 {
-	num_t train_i;		// 训练集索引
-	num_t val_i;		// 验证集索引
-	num_t j = 0;		// 当前索引
+	num_t i = 0;
+	num_t j = 0;
+	num_t new_l;
+	num_t new_m;
+	sample_t *tmp_x;
+	label_t tmp_y;
 
 	struct haar_adaboost *ada = cascade->adaboost.end_ptr->data;
-	for (val_i = 0; val_i < *l; ++val_i)
+	for (i = 0; i < *l; ++i)
 		if (hl->
-		    h(ada, img_size, img_size, img_size, (void *)sp->X[val_i],
-		      (void *)sp->X2[val_i], 1, &hl->wl_hl) > 0) {
-			sp->X[j] = sp->X[val_i];
-			sp->X2[j] = sp->X2[val_i];
-			sp->Y[j] = sp->Y[val_i];
-			++j;
-		} else {        // 释放被过滤样本的内存空间
-                        free (sp->X[val_i]);
-                        free (sp->X2[val_i]);
-                }
-	*l = j;
-        sample_t * tmp_x;
-        label_t tmp_y;
-	for (train_i = val_i; train_i < val_i + m; ++train_i)
-		if (sp->Y[train_i] > 0 ||
-		    hl->h(ada, img_size, img_size, img_size,
-			  (void *)sp->X[train_i], (void *)sp->X2[train_i], 1,
-			  &hl->wl_hl) > 0) {
-                        SWAP(sp->X[j], sp->X[train_i], tmp_x);
-                        SWAP(sp->X2[j], sp->X2[train_i], tmp_x);
-                        SWAP(sp->Y[j], sp->Y[train_i], tmp_y);
+		    h(ada, img_size, img_size, img_size, (void *)sp->X[i],
+		      (void *)sp->X2[i], 1, &hl->wl_hl) > 0) {
+			SWAP(sp->X[j], sp->X[i], tmp_x);
+			SWAP(sp->X2[j], sp->X2[i], tmp_x);
+			SWAP(sp->Y[j], sp->Y[i], tmp_y);
 			++j;
 		}
-        while (j++ < val_i + m)
-                // TODO 对非人脸样本作人脸检测，考虑修改接口，回调函数要有判断是否遍历全部非人脸图片的功能（人脸图片遍历类似处理）
+	new_l = j;
+	// 保存人脸样本和假阳性样本
+	for (i = *l; i < *l + *m; ++i)
+		if (sp->Y[i] > 0
+		    || hl->h(ada, img_size, img_size, img_size,
+			     (void *)sp->X[i], (void *)sp->X2[i], 1,
+			     &hl->wl_hl) > 0) {
+			SWAP(sp->X[j], sp->X[i], tmp_x);
+			SWAP(sp->X2[j], sp->X2[i], tmp_x);
+			SWAP(sp->Y[j], sp->Y[i], tmp_y);
+			++j;
+		}
+	num_t train_ct = j - new_l;
+	bool status = true;
+	if (train_ct < *m)
+		status =
+		    get_remain_samples(sp, &j, *m - train_ct, img_size, args,
+				       get_non_face, cascade, hl);
+	new_m = j - new_l;
+	printf("new_m: %d\n", new_m);
+	for (; j < *l + *m; ++j) {
+		free(sp->X[j]);
+		free(sp->X2[j]);
+	}
+	*l = new_l;
+	*m = new_m;
+	return status;
 }
 
 void free_samples(struct cas_sample *sp, num_t count)
 {
 	for (num_t i = 0; i < count; ++i) {
-		free (sp->X[i]);
-		free (sp->X2[i]);
+		free(sp->X[i]);
+		free(sp->X2[i]);
 	}
-	free (sp->X);
-	free (sp->X2);
-	free (sp->Y);
+	free(sp->X);
+	free(sp->X2);
+	free(sp->Y);
 }
 
 void intgraph(imgsz_t m, imgsz_t n, sample_t x[m][n])
@@ -190,20 +229,20 @@ void intgraph2(imgsz_t m, imgsz_t n, sample_t x[m][n])
 /*******************************************************************************
  * 				  静态函数实现
  ******************************************************************************/
-bool alloc_sample (struct cas_sample * sample, num_t m, imgsz_t img_size)
+bool alloc_sample(struct cas_sample *sample, num_t m, imgsz_t img_size)
 {
-	sample->X = malloc (sizeof(sample_t *) * m);
-	sample->X2 = malloc (sizeof(sample_t *) * m);
-	sample->Y = malloc (sizeof(label_t) * m);
+	sample->X = malloc(sizeof(sample_t *) * m);
+	sample->X2 = malloc(sizeof(sample_t *) * m);
+	sample->Y = malloc(sizeof(label_t) * m);
 	if (!sample->X || !sample->X2 || !sample->Y)
 		goto malloc_err;
 	num_t n;
-	imgsz_t len = img_size * img_size;
+	size_t len = sizeof(sample_t) * img_size * img_size;
 	for (n = 0; n < m; ++n) {
-		if (!(sample->X[n] = (sample_t *)malloc(sizeof(sample_t)*len)))
+		if (!(sample->X[n] = (sample_t *) malloc(len)))
 			goto malloc_arrs_err;
-		if (!(sample->X2[n] = (sample_t *)malloc(sizeof(sample_t)*len))){
-			free (sample->X[n]);
+		if (!(sample->X2[n] = (sample_t *) malloc(len))) {
+			free(sample->X[n]);
 			goto malloc_arrs_err;
 		}
 	}
@@ -211,18 +250,19 @@ bool alloc_sample (struct cas_sample * sample, num_t m, imgsz_t img_size)
 
 malloc_arrs_err:
 	for (num_t i = 0; i < n; ++i) {
-		free (sample->X[i]);
-		free (sample->X2[i]);
+		free(sample->X[i]);
+		free(sample->X2[i]);
 	}
 malloc_err:
-	free (sample->X);
-	free (sample->X2);
-	free (sample->Y);
+	free(sample->X);
+	free(sample->X2);
+	free(sample->Y);
 	return false;
 }
 
 void img_sampling(imgsz_t dst_size, sample_t dst[][dst_size], imgsz_t src_size,
-		  const sample_t src[][src_size], const struct cas_rect *rect)
+		  const unsigned char src[][src_size],
+		  const struct cas_rect *rect)
 {
 	flt_t rate = (flt_t) rect->len / dst_size;
 
@@ -232,7 +272,7 @@ void img_sampling(imgsz_t dst_size, sample_t dst[][dst_size], imgsz_t src_size,
 	for (i = 0; i < dst_size; ++i) {
 		posi_j = rect->start_x;
 		for (j = 0; j < dst_size; ++j) {
-			dst[i][j] = src[(imgsz_t)posi_i][(imgsz_t)posi_j];
+			dst[i][j] = src[(imgsz_t) posi_i][(imgsz_t) posi_j];
 			posi_j += rate;
 		}
 		posi_i += rate;
@@ -242,23 +282,67 @@ void img_sampling(imgsz_t dst_size, sample_t dst[][dst_size], imgsz_t src_size,
 void rand_rect(struct cas_rect *rect, imgsz_t min_len, imgsz_t height,
 	       imgsz_t width)
 {
-	imgsz_t max_len = width;		// 矩形框的最大边长
+	imgsz_t max_len = width;	// 矩形框的最大边长
 	if (height < max_len)
 		max_len = height;
-	rect->len = rand() % (max_len - min_len) + min_len;
-	rect->start_x = rand() % (width - rect->len);
-	rect->start_y = rand() % (height - rect->len);
+	if (max_len == min_len)
+		rect->len = min_len;
+	else
+		rect->len = rand() % (max_len - min_len) + min_len;
+	if (width == rect->len)
+		rect->start_x = 0;
+	else
+		rect->start_x = rand() % (width - rect->len);
+	if (height == rect->len)
+		rect->start_y = 0;
+	else
+		rect->start_y = rand() % (height - rect->len);
 }
 
-void shuffle (struct cas_sample *sp, num_t num)
+void shuffle(struct cas_sample *sp, num_t num)
 {
 	num_t index;
-	sample_t * tmp_x;
+	sample_t *tmp_x;
 	label_t tmp_y;
-	for (num_t i = num-1; i > 0; --i) {
+	for (num_t i = num - 1; i > 0; --i) {
 		index = rand() % i;
 		SWAP(sp->X[i], sp->X[index], tmp_x);
 		SWAP(sp->X2[i], sp->X2[index], tmp_x);
 		SWAP(sp->Y[i], sp->Y[index], tmp_y);
 	}
+}
+
+bool get_remain_samples(struct cas_sample *sp, num_t * index, num_t m,
+			imgsz_t img_size, void *args,
+			cas_non_face_fn get_non_face,
+			const struct cascade *cascade,
+			const struct haar_ada_handles *hl)
+{
+	imgsz_t h;
+	imgsz_t w;
+	num_t start_id;
+	num_t id;
+	link_iter iter;
+	struct link_list list;
+	const struct cas_det_rect * rect;
+	const unsigned char * img = get_non_face(&h, &w, &start_id, args);
+	do {
+		if (img == NULL)
+			return false;
+		list = cas_detect(cascade, h, w, (void *)img, DETECTOR_DELTA,
+				  hl);
+		//printf("list len: %d\n", list.size);
+		iter = link_list_start_iter(&list);
+		while (m > 0 && link_list_check_end(iter)) {
+			rect = link_list_get_data(iter);
+			IMG_2_SP(sp, img_size, *index, h, w, img, &rect->rect,
+				 -1);
+			++(*index);
+			link_list_next_iter(&iter);
+			--m;
+		}
+		link_list_free_full(&list, free);
+		img = get_non_face(&h, &w, &id, args);
+	} while(m > 0 && id != start_id);
+	return true;
 }
