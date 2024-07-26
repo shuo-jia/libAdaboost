@@ -13,7 +13,7 @@
 // 标注文件
 #define MARKPATH "./p_mark"
 // 每个 AdaBoost 分类器的检测率、假阳率
-#define DET_RATE 0.995
+#define DET_RATE 0.99
 #define FP_RATE 0.6
 // 最大假阳率
 #define MAX_FP_RATE 1E-8
@@ -168,24 +168,25 @@ const unsigned char *get_non_face(imgsz_t * h, imgsz_t * w, num_t * id,
 			free (args->non_faces[i]);
 			args->non_faces[i] = NULL;
 		}
-		// 截取人脸部分左、右、上、下侧的图像作为非人脸图像
 		int index = 0;
+		// 以人脸中线（竖线）为分界线，将图片分为左、右两张非人脸图片
 		rect.start_x = 0;
 		rect.start_y = 0;
 		rect.height = img->height;
-		if ((rect.width = face.start_x) >= FACE_SIZE)
+		if ((rect.width = face.start_x + face.len / 2.0) >= FACE_SIZE)
 			if (!(args->non_faces[index++] = get_sub_image (img, &rect)))
 				goto err;
-		rect.start_x = face.start_x + face.len;
+		rect.start_x += rect.width;
 		if ((rect.width = img->width - rect.start_x) >= FACE_SIZE)
 			if (!(args->non_faces[index++] = get_sub_image (img, &rect)))
 				goto err;
-		rect.start_x = face.start_x;
-		rect.width = face.len;
-		if ((rect.height = face.start_y) >= FACE_SIZE)
+		// 以人脸中线（水平线）为分界线，将图片分为上、下两张非人脸图片
+		rect.start_x = rect.start_y = 0;
+		rect.width = img->width;
+		if ((rect.height = face.start_y + face.len / 2.0) >= FACE_SIZE)
 			if (!(args->non_faces[index++] = get_sub_image (img, &rect)))
 				goto err;
-		rect.start_y = face.start_y + face.len;
+		rect.start_y = rect.height;
 		if ((rect.height = img->height - rect.start_y) >= FACE_SIZE)
 			if (!(args->non_faces[index++] = get_sub_image (img, &rect)))
 				goto err;

@@ -49,17 +49,18 @@ bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F,
 	       void *args, cas_face_fn get_face, cas_non_face_fn get_non_face,
 	       struct haar_ada_handles *hl)
 {
-	struct haar_adaboost *adaboost = NULL;		// Adaboost 地址
-	flt_t ada_f_p_ratio;				// AdaBoost 假阳率
-	flt_t ada_det_ratio;				// AdaBoost 检测率
+	struct haar_adaboost *adaboost = NULL;	// Adaboost 地址
+	flt_t ada_f_p_ratio;	// AdaBoost 假阳率
+	flt_t ada_det_ratio;	// AdaBoost 检测率
 
-	cascade->img_size = img_size;			// 设置图像尺寸
-	cascade->f_p_ratio = 1;				// 当前假阳率
-	cascade->det_ratio = 1;				// 当前检测率
+	cascade->img_size = img_size;	// 设置图像尺寸
+	cascade->f_p_ratio = 1;	// 当前假阳率
+	cascade->det_ratio = 1;	// 当前检测率
 	link_list_init(&cascade->adaboost);
 
-	num_t m = (face + non_face) * train_pct;	// 训练集样本数量
-	num_t l = (face + non_face) - m;		// 验证集样本数量
+	num_t m;		// 训练集样本数量
+	num_t l;		// 验证集样本数量
+	num_t sp_len = face + non_face;	// 样本集总数量
 	struct cas_sample sample;
 	if (!init_samples(&sample, img_size, face, non_face, args, get_face,
 			  get_non_face))
@@ -70,12 +71,19 @@ bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F,
 	while (true) {
 		ada_det_ratio = d;
 		ada_f_p_ratio = f;
+		m = sp_len * train_pct;
+		l = sp_len - m;
 		if ((adaboost = malloc(sizeof(struct haar_adaboost))) == NULL)
 			goto new_ab_err;
 		if (!hl->train(adaboost, &ada_det_ratio, &ada_f_p_ratio, l, m,
 			       img_size, img_size, (void *)sample.X,
 			       (void *)sample.X2, sample.Y, &hl->wl_hl))
 			goto train_ab_err;
+		if (ada_f_p_ratio > f) {
+			hl->free(adaboost, &hl->wl_hl);
+			free(adaboost);
+			break;
+		}
 		if (!link_list_append(&cascade->adaboost, adaboost))
 			goto append_err;
 		// 更新当前假阳率、检测率
@@ -87,19 +95,18 @@ bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F,
 		       cascade->f_p_ratio);
 		printf("Target maximum false positive ratio: %f\n", F);
 #endif
-		if (ada_f_p_ratio > f)
+		if (cascade->f_p_ratio < F)		// 退出条件
 			break;
 		// 调整样本
-		if (cascade->f_p_ratio < F)
-			break;
-		if (!update_samples(&sample, img_size, &l, &m, args,
-				    get_non_face, cascade, hl))
+		if (!update_samples
+		    (&sample, img_size, &sp_len, args, get_non_face, cascade,
+		     hl))
 			goto update_err;
 	}
 #ifdef LOG
 	printf("Training end.\n");
 #endif
-	free_samples(&sample, l + m);
+	free_samples(&sample, sp_len);
 	return true;
 
 append_err:
@@ -108,7 +115,7 @@ train_ab_err:
 	free(adaboost);
 update_err:
 new_ab_err:
-	free_samples(&sample, l + m);
+	free_samples(&sample, sp_len);
 	cas_free(cascade, hl);
 	return false;
 }

@@ -11,7 +11,7 @@
 #define MODEL_PATH "./cascade_data"
 #define DIRPATH "../BioID-FaceDatabase-V1.2/"
 // 训练集数量，将跳过训练集
-#define TRAIN_COUNT 1
+#define TRAIN_COUNT 1000
 // 文件名最大长度
 #define MAX_FILENAME 128
 

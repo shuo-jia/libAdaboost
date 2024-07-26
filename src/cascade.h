@@ -42,8 +42,8 @@ struct cascade {
  * \param[out] w        用于保存图片宽度
  * \param[out] rect     用于保存人脸框的位置及大小
  * \param[in, out] args 用户自定义的参数，用于保证可重入性
- * \return 成功则返回灰度图片地址，否则返回 NULL。灰度图片用一个一维数组表示，灰度
- * 			值矩阵按行优先存储
+ * \return 成功则返回灰度图片地址，否则返回 NULL。灰度图片用一个一维数组表示，灰
+ * 			度值矩阵按行优先存储
  */
 typedef const unsigned char *(*cas_face_fn) (imgsz_t * h, imgsz_t * w,
 					     struct cas_rect * rect,
@@ -81,6 +81,7 @@ typedef const unsigned char *(*cas_non_face_fn) (imgsz_t * h, imgsz_t * w,
  * \param[in] get_non_face 回调函数，获取非人脸图片，参数 args 将被传递给该函数
  * \param[in] hl           级联分类器回调函数集
  * \return 训练成功返回真，否则返回假
+ * 	注：训练过程未出错，但无法达到指定假阳率的情形，仍返回真
  */
 bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F,
 	       flt_t train_pct, num_t face, num_t non_face, imgsz_t img_size,

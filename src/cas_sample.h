@@ -42,19 +42,18 @@ bool init_samples(struct cas_sample *sp, imgsz_t img_size, num_t face,
 /**
 * \brief 更新调整训练集和验证集
 * \param[in, out] sp      已初始化的样本集地址（包括训练集和验证集）
-* \param[in, out] l       指向验证集样本数量。函数运行后，验证集样本数量将会减少，
-*                         不被使用的验证集样本所占内存将被释放
-* \param[in, out] m       指向训练集样本数量。函数运行后，训练集样本数量数量将会
+* \param[in, out] m       指向样本集样本数量。函数运行后，样本集样本数量数量将会
 * 			  减少，不被使用的样本将被释放
 * \param[in, out] args    用户自定义参数
 * \param[in] get_non_face 回调函数，用于获取非人脸图片，args 将被传递给该函数
 * \param[in] cascade      指向当前训练的级联分类器
 * \param[in] hl           指向 Adaboost 分类器回调函数集
 */
-bool update_samples(struct cas_sample *sp, imgsz_t img_size, num_t * l, num_t * m,
+bool update_samples(struct cas_sample *sp, imgsz_t img_size, num_t * m,
 		    void *args, cas_non_face_fn get_non_face,
 		    const struct cascade *cascade,
 		    const struct haar_ada_handles *hl);
+
 
 /**
  * \brief 释放样本集内存

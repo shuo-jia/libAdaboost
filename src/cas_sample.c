@@ -139,54 +139,34 @@ err:
 	return false;
 }
 
-bool update_samples(struct cas_sample * sp, imgsz_t img_size, num_t * l,
-		    num_t * m, void *args, cas_non_face_fn get_non_face,
-		    const struct cascade * cascade,
-		    const struct haar_ada_handles * hl)
+bool update_samples(struct cas_sample *sp, imgsz_t img_size, num_t * m,
+		    void *args, cas_non_face_fn get_non_face,
+		    const struct cascade *cascade,
+		    const struct haar_ada_handles *hl)
 {
 	num_t i = 0;
 	num_t j = 0;
-	num_t new_l;
-	num_t new_m;
 	sample_t *tmp_x;
 	label_t tmp_y;
 
-	struct haar_adaboost *ada = cascade->adaboost.end_ptr->data;
-	for (i = 0; i < *l; ++i)
-		if (hl->
-		    h(ada, img_size, img_size, img_size, (void *)sp->X[i],
-		      (void *)sp->X2[i], 1, &hl->wl_hl) > 0) {
+	for (i = 0; i < *m; ++i)
+		if (sp->Y[i] > 0) {
 			SWAP(sp->X[j], sp->X[i], tmp_x);
 			SWAP(sp->X2[j], sp->X2[i], tmp_x);
 			SWAP(sp->Y[j], sp->Y[i], tmp_y);
 			++j;
 		}
-	new_l = j;
-	// 保存人脸样本和假阳性样本
-	for (i = *l; i < *l + *m; ++i)
-		if (sp->Y[i] > 0
-		    || hl->h(ada, img_size, img_size, img_size,
-			     (void *)sp->X[i], (void *)sp->X2[i], 1,
-			     &hl->wl_hl) > 0) {
-			SWAP(sp->X[j], sp->X[i], tmp_x);
-			SWAP(sp->X2[j], sp->X2[i], tmp_x);
-			SWAP(sp->Y[j], sp->Y[i], tmp_y);
-			++j;
-		}
-	num_t train_ct = j - new_l;
-	bool status = true;
-	if (train_ct < *m)
-		status =
-		    get_remain_samples(sp, &j, *m - train_ct, img_size, args,
-				       get_non_face, cascade, hl);
-	new_m = j - new_l;
+	bool status =
+	    get_remain_samples(sp, &j, *m - j, img_size, args, get_non_face,
+			       cascade, hl);
+	num_t new_m = j;
 	printf("new_m: %d\n", new_m);
-	for (; j < *l + *m; ++j) {
+	for (; j < *m; ++j) {
 		free(sp->X[j]);
 		free(sp->X2[j]);
 	}
-	*l = new_l;
 	*m = new_m;
+	shuffle(sp, new_m);
 	return status;
 }
 
