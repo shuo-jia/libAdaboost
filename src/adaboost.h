@@ -343,6 +343,8 @@ enum ada_haar_t {
  * \param[out] handles: 要初始化的结构体
  * \param[in] alpha_type: 指示弱学习器系数计算方法
  * \param[in] h_type: 指示假设器类型
+ * 	（如为 ADA_CONFIDENT，则使用 handles->hypothesis.cf_h() 获取分类结果；
+ * 	  如为 ADA_NO_CONFIDENT，则使用 handles->hypothesis.h() 获取分类结果）
  * \param[in] wl_type: 指示弱学习器类型
  */
 void ada_set_vec(struct vec_ada_handles *handles, enum ada_alpha_t alpha_type,
