@@ -1,4 +1,3 @@
-\mainpage 使用说明
 # libAdaboost
 libAdaboost 使用 C 语言实现了 AdaBoost 分类器和级联分类器，能被应用于二分类、多
 分类任务。算法完全由 C 语言实现，便于移植到其他平台。
