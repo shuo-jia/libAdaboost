@@ -14,6 +14,7 @@
 /*******************************************************************************
  *				   宏函数定义
  ******************************************************************************/
+/// 返回 x, y 二者的最大值
 #define MAX(x, y)								\
 ({										\
  	typeof(x) _x = (x);							\
@@ -21,6 +22,7 @@
 	(_x > _y) ? _x : _y;							\
 })
 
+/// 返回 x, y 二者的最小值
 #define MIN(x, y)								\
 ({										\
  	typeof(x) _x = (x);							\
@@ -99,7 +101,7 @@ bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F,
 			break;
 		// 调整样本
 		if (!update_samples
-		    (&sample, img_size, &sp_len, args, get_non_face, cascade,
+		    (&sample, &sp_len, args, img_size, get_non_face, cascade,
 		     hl))
 			goto update_err;
 	}
@@ -118,21 +120,6 @@ new_ab_err:
 	free_samples(&sample, sp_len);
 	cas_free(cascade, hl);
 	return false;
-}
-
-bool cas_cat(struct cascade * dst, struct cascade * src)
-{
-	if (dst->img_size != src->img_size)
-		return false;
-
-	dst->adaboost.end_ptr->next = src->adaboost.head.next;
-	dst->adaboost.end_ptr = src->adaboost.end_ptr;
-	dst->adaboost.size += src->adaboost.size;
-
-	link_list_init(&src->adaboost);
-	dst->det_ratio *= src->det_ratio;
-	dst->f_p_ratio *= src->f_p_ratio;
-	return true;
 }
 
 bool cas_write(const struct cascade * cascade, FILE * file,

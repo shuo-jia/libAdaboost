@@ -15,7 +15,7 @@ double getErrRate(const struct vec_adaboost *ada, bool using_cf, int m, int n,
 int main(void)
 {
 	// 读取训练集
-	Table *table = load("../dataset/pendigits.tra");
+	Table *table = load("./dataset/pendigits.tra");
 	int m = getTableRow(table);
 	int n = getTableCol(table);
 	double (*X) [n - 1] = malloc(sizeof(double) * m * (n-1));
@@ -41,7 +41,7 @@ int main(void)
 	free(Y);
 
 	// 读取测试集
-	table = load("../dataset/pendigits.tes");
+	table = load("./dataset/pendigits.tes");
 	m = getTableRow(table);
 	X= malloc(sizeof(double) * m * (n-1));
 	Y = malloc(sizeof(int) * m);
@@ -90,10 +90,10 @@ double getErrRate(const struct vec_adaboost *ada, bool using_cf, int m, int n,
 	double err = 0;
 	for (int i = 0; i < m; ++i)
 		if (using_cf) {
-			if (hl->hypothesis.cf_h(ada, X[i], n - 1, &hl->wl_hl) *
+			if (hl->cf_h(ada, X[i], n - 1, &hl->wl_hl) *
 			    Y[i] <= 0)
 				++err;
-		} else if (hl->hypothesis.h(ada, X[i], n - 1, &hl->wl_hl) *
+		} else if (hl->h(ada, X[i], n - 1, &hl->wl_hl) *
 			   Y[i] <= 0)
 			++err;
 

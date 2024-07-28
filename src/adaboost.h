@@ -106,7 +106,7 @@ struct vec_ada_handles {
 	union {				///< 联合，输出分类结果
 		vec_ada_h_fn h;		///< 不带置信度，输出分类结果
 		vec_ada_cf_h_fn cf_h;	///< 带置信度，输出分类结果
-	} hypothesis;			///< 假设器输出方法
+	};
 	vec_ada_read_fn read;		///< 读取方法
 	vec_ada_write_fn write;		///< 写入方法
 	vec_ada_copy_fn copy;		///< 复制方法
@@ -343,8 +343,8 @@ enum ada_haar_t {
  * \param[out] handles: 要初始化的结构体
  * \param[in] alpha_type: 指示弱学习器系数计算方法
  * \param[in] h_type: 指示假设器类型
- * 	（如为 ADA_CONFIDENT，则使用 handles->hypothesis.cf_h() 获取分类结果；
- * 	  如为 ADA_NO_CONFIDENT，则使用 handles->hypothesis.h() 获取分类结果）
+ * 	（如为 ADA_CONFIDENT，则使用 handles->cf_h() 获取分类结果；
+ * 	  如为 ADA_NO_CONFIDENT，则使用 handles->h() 获取分类结果）
  * \param[in] wl_type: 指示弱学习器类型
  */
 void ada_set_vec(struct vec_ada_handles *handles, enum ada_alpha_t alpha_type,
@@ -375,4 +375,28 @@ void ada_set_mvec(struct mvec_ada_handles *handles, enum ada_mvec_t mvec_type,
 void ada_set_haar(struct haar_ada_handles *handles, enum ada_haar_t haar_type,
 		  enum ada_wl_train_t wl_train_type);
 
+/**
+ * 一个训练 AdaBoost 分类器的例子
+ * \note
+ * 数据集采用手写字符数据集 DIGITS
+ * (https://archive.ics.uci.edu/dataset/81/pen+based+recognition+of+handwritten+digits)\n
+ * 解压后放入 dataset 目录下。
+ *
+ * \par txt 表格的读取模块（类型及函数声明）
+ * table.h
+ * \include table.h
+ * \par txt 表格的读取模块（函数实现）
+ * \include table.c
+ * \par 配置文件修改
+ * boost_cfg.h
+ * \include adaboost/boost_cfg.h
+ *
+ * \par 一个简单的二分类任务示例（对数字 0，数字 1 进行分类）
+ * ada_train.c
+ * \include ada_train.c
+ *
+ * \par 多分类任务示例
+ * mada_train.c
+ * \example mada_train.c
+ */
 #endif

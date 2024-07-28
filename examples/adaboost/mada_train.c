@@ -13,7 +13,7 @@ double getErrRate(const struct mvec_adaboost *ada, int m, int n,
 int main(void)
 {
 	// 读取训练集
-	Table *table = load("../dataset/pendigits.tra");
+	Table *table = load("./dataset/pendigits.tra");
 	int m = getTableRow(table);
 	int n = getTableCol(table);
 	double (*X) [n - 1] = malloc(sizeof(double) * m * (n-1));
@@ -26,9 +26,9 @@ int main(void)
 	// 配置 AdaBoost
 	struct mvec_adaboost adaboost;
 	struct mvec_ada_handles handles;
-	ada_set_mvec(&handles, ADA_HLOSS, ADA_FOLD, ADA_DISCRETE);
+	ada_set_mvec(&handles, ADA_HLOSS, ADA_FOLD, ADA_CONTINUOUS);
 	// 训练并获取训练误差
-	if (!handles.train(&adaboost, 100, m, n - 1, X, Y, true, &handles.wl_hl)) {
+	if (!handles.train(&adaboost, 350, m, n - 1, X, Y, true, &handles.wl_hl)) {
 		fprintf(stderr, "Training Error.\n");
 		return 1;
 	}
@@ -38,7 +38,7 @@ int main(void)
 	free(Y);
 
 	// 读取测试集并输出测试误差
-	table = load("../dataset/pendigits.tes");
+	table = load("./dataset/pendigits.tes");
 	m = getTableRow(table);
 	X = malloc(sizeof(double) * m * (n-1));
 	Y = malloc(sizeof(int) * m);

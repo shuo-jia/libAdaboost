@@ -139,8 +139,8 @@ err:
 	return false;
 }
 
-bool update_samples(struct cas_sample *sp, imgsz_t img_size, num_t * m,
-		    void *args, cas_non_face_fn get_non_face,
+bool update_samples(struct cas_sample *sp, num_t * m, void *args,
+		    imgsz_t img_size, cas_non_face_fn get_non_face,
 		    const struct cascade *cascade,
 		    const struct haar_ada_handles *hl)
 {

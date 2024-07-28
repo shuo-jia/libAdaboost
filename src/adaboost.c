@@ -70,11 +70,11 @@ void ada_set_vec(struct vec_ada_handles *handles, enum ada_alpha_t alpha_type,
 	handles->train = vec_ada_train_arr[alpha_type];
 	switch (h_type) {
 	case ADA_NO_CONFIDENT:
-		handles->hypothesis.h = vec_ada_h_arr[h_type]
+		handles->h = vec_ada_h_arr[h_type]
 		    [alpha_type == ADA_FOLD];
 		break;
 	case ADA_CONFIDENT:
-		handles->hypothesis.cf_h = vec_ada_h_arr[h_type]
+		handles->cf_h = vec_ada_h_arr[h_type]
 		    [alpha_type == ADA_FOLD];
 		break;
 	case ADA_H_END:

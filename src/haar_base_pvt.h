@@ -115,23 +115,23 @@ bool init_setting(struct train_setting *st, struct haar_adaboost *adaboost,
 
 /**
  * \brief 释放训练过程中所用到的临时空间
- * \param[in] st: 指向已初始化的训练设置集
+ * \param[in] st 指向已初始化的训练设置集
  */
 void free_setting(struct train_setting *st);
 
 /**
  * \brief 计算当前检测率、假阳率
- * \param[out] d: 用于保存检测率
- * \param[out] f: 用于保存假阳率
- * \param[out] ada: Adaboost 包装结构体，output 字段将被更新
- * \param[in] vals: 中间值，保存 alpha * h(X[i]) 的值
+ * \param[out] d   用于保存检测率
+ * \param[out] f   用于保存假阳率
+ * \param[out] ada Adaboost 包装结构体，output 字段将被更新
+ * \param[in] vals 中间值，保存 alpha * h(X[i]) 的值
  */
 void get_ratio(flt_t * d, flt_t * f, struct ada_wrap *ada, const flt_t vals[]);
 
 /**
  * \brief 当全部训练样本分类成功时执行的函数
  *      更新验证集的假阳率、检测率（不带置信度）
- * \param[in, out] st: 训练设置集，包含样本集及 Adaboost 分类器
+ * \param[in, out] st 训练设置集，包含样本集及 Adaboost 分类器
  * \return 成功返回真，失败返回假
  */
 bool haar_all_pass (struct train_setting *st);

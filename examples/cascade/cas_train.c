@@ -9,7 +9,7 @@
 // 文件名最大长度
 #define MAX_FILENAME 128
 // 图片所在目录
-#define DIRPATH "../BioID-FaceDatabase-V1.2/"
+#define DIRPATH "./BioID-FaceDatabase-V1.2/"
 // 标注文件
 #define MARKPATH "./p_mark"
 // 每个 AdaBoost 分类器的检测率、假阳率
@@ -31,7 +31,6 @@
 /*******************************************************************************
  * 				    类型定义
  ******************************************************************************/
-// 回调函数参数的类型
 struct sp_args {
 	FILE * mark;			// 标注文件
 	fpos_t cursor_face;		// (最后一次获取人脸样本后)标注文件指针

@@ -89,15 +89,6 @@ bool cas_train(struct cascade *cascade, flt_t d, flt_t f, flt_t F,
 	       struct haar_ada_handles *hl);
 
 /**
- * \brief 将级联分类器 src 追加到级联分类器 dst 之后，训练图片大小必须相同
- * \param[out] dst     目标级联分类器，追加成功后 dst 的检测率、假阳率字段不保证
- *                     精确
- * \param[in, out] src 源级联分类器，追加成功后该级联分类器被初始化为空
- * \return 成功则返回真，否则返回假
- */
-bool cas_cat(struct cascade *dst, struct cascade *src);
-
-/**
  * \brief 保存级联分类器的模型参数到文件
  * \param[in] cascade 要保存参数的级联分类器
  * \param[out] file   已打开文件的文件指针（可写，二进制形式）
@@ -178,4 +169,44 @@ struct link_list cas_detect(const struct cascade *cascade, imgsz_t h,
 			    imgsz_t w, unsigned char img[h][w], imgsz_t delta,
 			    const struct haar_ada_handles *hl);
 
+/**
+ * 一个训练级联分类器（人脸检测器）的例子。
+ * \note
+ * 这里数据集采用 BioID 人脸数据集(https://www.bioid.com/face-database/)。\n
+ * pgm 图像需解压至 BioID-FaceDatabase-V1.2 目录下。\n
+ * 除此之外，还需将人脸框标注文件保存为 p_mark（见于示例）。
+ *
+ * \par 图像的处理模块（类型及函数声明）
+ * image.h
+ * \include image.h
+ * \par 图像的处理模块（函数实现）
+ * image.c
+ * \include image.c
+ * \note
+ * 该模块提供了 jpeg 图像读取功能，但依赖于 libjpeg 库，默认情况下不编译 jpeg
+ * 图片相关功能。\n
+ * 如需使用，则需将 libjpeg 加入编译；并定义 IMG_JPEG 宏，如在 gcc中加入编译选项：
+ * 	-DIMG_JPEG
+ *
+ * \par 配置文件修改
+ * boost_cfg.h
+ * \include cascade/boost_cfg.h
+ *
+ * \par 人脸检测
+ * 读取二进制文件 cascade_data（保存有级联分类器），简单地将人脸框输出到控制台
+ * \include cas_detect.c
+ *
+ * \par 人脸检测器训练
+ * 使用人脸灰度图像来训练级联分类器（pgm 图片格式），并将级联分类器保存到二进制文
+ * 件 cascade_data 中。\n
+ * 训练时，每张图片以人脸为中心，分为上、下两张子图，以及左、右子图，共计 4 张
+ * 子图，作为非人脸图像。
+ * \example cas_train.c
+ *
+ * \example p_mark
+ * \par 附录：BioID 数据集人脸位置及大小的标注文件。
+ * 文件每一行的第一个字段给出 BioID 数据集图像的文件名，第二个字段给出人脸左上
+ * 角的横坐标，第三个字段给出人脸左上角的纵坐标，第四个字段给出人脸框的高度，第
+ * 五个字段给出人脸框的宽度。这里高度与宽度是相等的。
+ */
 #endif
