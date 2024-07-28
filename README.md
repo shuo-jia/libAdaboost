@@ -89,6 +89,9 @@ example/ 目录给出了一些示例程序。
 example/cascade/ 使用 BioID 人脸数据集进行训练，给出了一个用于人脸检测的级联分
 类器示例程序。
 
+libAdaboost 的 Doxygen 代码文档对示例程序给出了更为细致的说明（包括数据集下载及
+数据集解压目录），见"文档生成"一节。
+
 # 文档生成
 libAdaboost 采用了 Doxygen 注释规范，可通过 Doxygen 工具生成代码文档。安装
 Doxygen 后，在 doc/ 目录下执行命令：
