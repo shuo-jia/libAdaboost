@@ -21,8 +21,8 @@ Link = -lm
 # 如果使用 image.h 的 jpeg 读取功能，则需添加 libjpeg 库，并取消注释该语句
 # Link += -ljpeg
 
-# 编译选项（开启调试）
-Opt = -g
+# 编译选项（开启调试）；鉴于级联分类器训练时间较长，可启用 -DLOG 选项在训练时输出信息
+Opt = -g -DLOG
 # 当使用 image.h 的 jpeg 读取功能时，需取消注释该语句 
 # Opt += -DIMG_JPEG
 
